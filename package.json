@@ -1,0 +1,50 @@
+{
+	"name": "@iqai/defillama-mcp",
+	"version": "0.0.1",
+	"description": "Standalone MCP server for DefiLlama data access",
+	"main": "dist/index.js",
+	"type": "module",
+	"bin": {
+		"defillama-mcp": "dist/index.js"
+	},
+	"files": ["dist"],
+	"scripts": {
+		"build": "tsc && shx chmod +x dist/index.js",
+		"prepare": "husky",
+		"watch": "tsc --watch",
+		"start": "node dist/index.js",
+		"format": "biome format . --write",
+		"lint": "biome check ."
+	},
+	"keywords": ["mcp", "defillama", "defi"],
+	"author": "IQAI",
+	"license": "ISC",
+	"dependencies": {
+		"@iqai/adk": "^0.3.6",
+		"@ai-sdk/google": "^2.0.23",
+		"@google/generative-ai": "^0.24.1",
+		"@openrouter/ai-sdk-provider": "^1.2.0",
+		"ai": "^5.0.77",
+		"axios": "^1.12.2",
+		"dotenv": "^17.2.3",
+		"endent": "^2.1.0",
+		"fastmcp": "^3.16.0",
+		"jqts": "^0.0.8",
+		"js-tiktoken": "^1.0.21",
+		"winston": "^3.18.3",
+		"zod": "^4.1.11"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.6",
+		"@types/node": "^24.6.2",
+		"husky": "^9.0.0",
+		"lint-staged": "^15.0.0",
+		"shx": "^0.3.4",
+		"typescript": "^5.9.3"
+	},
+	"lint-staged": {
+		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
+			"biome check --write --organize-imports-enabled=false --no-errors-on-unmatched"
+		]
+	}
+}
