@@ -1,0 +1,92 @@
+export const options = [
+	{
+		slug: "aevo",
+		name: "Aevo",
+		id: "2797",
+		symbol: "-",
+	},
+	{
+		slug: "lyra-v1",
+		name: "Lyra V1",
+		id: "503",
+		symbol: "-",
+	},
+	{
+		slug: "hegic",
+		name: "Hegic",
+		id: "128",
+		symbol: "-",
+	},
+	{
+		slug: "premia-v2",
+		name: "Premia V2",
+		id: "381",
+		symbol: "-",
+	},
+	{
+		slug: "premia-v3",
+		name: "Premia V3",
+		id: "381",
+		symbol: "-",
+	},
+	{
+		slug: "valorem",
+		name: "Valorem",
+		id: "3501",
+		symbol: "-",
+	},
+	{
+		slug: "stryke-clamm",
+		name: "Stryke CLAMM",
+		id: "3817",
+		symbol: "-",
+	},
+	{
+		slug: "ithaca-protocol",
+		name: "Ithaca Protocol",
+		id: "4418",
+		symbol: "-",
+	},
+	{
+		slug: "jasper-vault",
+		name: "Jasper Vault",
+		id: "4630",
+		symbol: "-",
+	},
+	{
+		slug: "lyra-v2",
+		name: "Lyra V2",
+		id: "3923",
+		symbol: "-",
+	},
+	{
+		slug: "moby",
+		name: "Moby",
+		id: "4452",
+		symbol: "-",
+	},
+	{
+		slug: "rysk-finance",
+		name: "Rysk Finance",
+		id: "2605",
+		symbol: "-",
+	},
+	{
+		slug: "smilee-finance",
+		name: "Smilee Finance",
+		id: "4350",
+		symbol: "-",
+	},
+	{
+		slug: "thales",
+		name: "Thales",
+		id: "534",
+		symbol: "-",
+	},
+	{
+		slug: "typus-finance",
+		name: "Typus Finance",
+		id: "2946",
+		symbol: "-",
+	},
+];
