@@ -1,7 +1,7 @@
 import type { LanguageModel } from "ai";
 import { generateText } from "ai";
 import dedent from "dedent";
-import jq from "jqts";
+import { JQ } from "jqts";
 import { createChildLogger } from "../lib/utils/index.js";
 
 const logger = createChildLogger("LLM Data Filter");
@@ -183,7 +183,7 @@ export class LLMDataFilter {
 				return this.getFallbackData(parsedData);
 			}
 
-			const pattern = jq.compile(jqQuery);
+			const pattern = JQ.compile(jqQuery);
 			let filteredData: JSONValue = pattern.evaluate(parsedData);
 
 			if (!filteredData || (Array.isArray(filteredData) && filteredData.length === 0)) {
