@@ -108,19 +108,34 @@ There are a few ways to use `defillama-mcp`:
 
 ## Configuration (Environment Variables)
 
-This MCP server requires certain environment variables to be set by the MCP client that runs it. These are typically configured in the client's MCP server definition (e.g., in a `mcp.json` file for Cursor, or similar for other clients).
+This MCP server can be configured with environment variables set by the MCP client that runs it. These are typically configured in the client's MCP server definition (e.g., in a `mcp.json` file for Cursor, or similar for other clients).
 
-* **`IQ_GATEWAY_URL`**: (Optional) Custom IQ Gateway URL for enhanced resolution capabilities.
-* **`IQ_GATEWAY_KEY`**: (Optional) API key for IQ Gateway access.
-* **`OPENROUTER_API_KEY`**: (Optional) API key for OpenRouter LLM integration for enhanced entity resolution.
-* **`LLM_MODEL`**: (Optional) LLM model to use for entity resolution (e.g., `openai/gpt-4.1-mini`).
-* **`GOOGLE_GENERATIVE_AI_API_KEY`**: (Optional) Google Generative AI API key for alternative LLM integration.
+**All environment variables are optional**, but you may want to configure one of the following for API access:
+
+### DefiLlama API Configuration (Choose One)
+
+1. **Direct DefiLlama API Access** (Recommended for most users):
+   * **`DEFILLAMA_API_KEY`**: Your DefiLlama API key (get one at [https://defillama.com](https://defillama.com))
+   * If not provided, the server will make unauthenticated requests to DefiLlama (subject to rate limits)
+
+2. **IQ Gateway** (For advanced caching and monitoring):
+   * **`IQ_GATEWAY_URL`**: Custom IQ Gateway URL for enhanced resolution capabilities
+   * **`IQ_GATEWAY_KEY`**: API key for IQ Gateway access
+   * This option is primarily for IQAI internal use but available for users with their own gateway infrastructure
+
+### Enhanced Features (Optional)
+
+* **`OPENROUTER_API_KEY`**: API key for OpenRouter LLM integration for enhanced entity resolution
+* **`LLM_MODEL`**: LLM model to use for entity resolution (default: `openai/gpt-4.1-mini`)
+* **`GOOGLE_GENERATIVE_AI_API_KEY`**: Google Generative AI API key for alternative LLM integration
 
 ## Running the Server with an MCP Client
 
 MCP clients (like AI assistants, IDE extensions, etc.) will run this server as a background process. You need to configure the client to tell it how to start your server.
 
-Below is an example configuration snippet that an MCP client might use (e.g., in a `mcp_servers.json` or similar configuration file). This example shows how to run the server using the published npm package via `pnpm dlx`.
+Below are example configuration snippets that an MCP client might use (e.g., in a `mcp_servers.json` or similar configuration file). These examples show how to run the server using the published npm package via `pnpm dlx`.
+
+**Basic Configuration (Recommended for most users):**
 
 ```json
 {
@@ -132,8 +147,44 @@ Below is an example configuration snippet that an MCP client might use (e.g., in
         "@iqai/defillama-mcp"
       ],
       "env": {
-        "IQ_GATEWAY_URL": "your_iq_gateway_url_if_needed",
-        "IQ_GATEWAY_KEY": "your_iq_gateway_key_if_needed",
+        "DEFILLAMA_API_KEY": "your_defillama_api_key_here"
+      }
+    }
+  }
+}
+```
+
+**Minimal Configuration (No API key - uses unauthenticated requests):**
+
+```json
+{
+  "mcpServers": {
+    "defillama-mcp-server": {
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "@iqai/defillama-mcp"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+**Advanced Configuration (With IQ Gateway):**
+
+```json
+{
+  "mcpServers": {
+    "defillama-mcp-server": {
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "@iqai/defillama-mcp"
+      ],
+      "env": {
+        "IQ_GATEWAY_URL": "your_iq_gateway_url",
+        "IQ_GATEWAY_KEY": "your_iq_gateway_key",
         "OPENROUTER_API_KEY": "your_openrouter_api_key_if_needed",
         "LLM_MODEL": "openai/gpt-4.1-mini",
         "GOOGLE_GENERATIVE_AI_API_KEY": "your_google_api_key_if_needed"
@@ -154,11 +205,7 @@ If you have installed `defillama-mcp` globally (`pnpm add -g @iqai/defillama-mcp
       "command": "defillama-mcp",
       "args": [],
       "env": {
-        "IQ_GATEWAY_URL": "your_iq_gateway_url_if_needed",
-        "IQ_GATEWAY_KEY": "your_iq_gateway_key_if_needed",
-        "OPENROUTER_API_KEY": "your_openrouter_api_key_if_needed",
-        "LLM_MODEL": "openai/gpt-4.1-mini",
-        "GOOGLE_GENERATIVE_AI_API_KEY": "your_google_api_key_if_needed"
+        "DEFILLAMA_API_KEY": "your_defillama_api_key_here"
       }
     }
   }
