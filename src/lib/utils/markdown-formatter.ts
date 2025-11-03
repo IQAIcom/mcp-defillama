@@ -54,9 +54,7 @@ function formatTable(
 	if (data.length === 0) return "_No data available_\n";
 
 	const cleaned = data.map((item) => removeNulls(item));
-	const keys = Array.from(
-		new Set(cleaned.flatMap((item) => Object.keys(item))),
-	);
+	const keys = Array.from(new Set(cleaned.flatMap((item) => Object.keys(item))));
 
 	// Header
 	const headers = keys.map(toTitleCase).join(" | ");
@@ -71,10 +69,7 @@ function formatTable(
 				if (value === undefined || value === null) return "";
 
 				// Format currency fields
-				if (
-					options?.currencyFields?.includes(key) &&
-					typeof value === "number"
-				) {
+				if (options?.currencyFields?.includes(key) && typeof value === "number") {
 					return formatCurrency(value);
 				}
 
@@ -122,11 +117,7 @@ function formatObject(
 			}
 		} else if (typeof value === "object") {
 			output += `${prefix}**${label}:**\n`;
-			output += formatObject(
-				value as Record<string, unknown>,
-				options,
-				indent + 1,
-			);
+			output += formatObject(value as Record<string, unknown>, options, indent + 1);
 		} else {
 			let formattedValue: string;
 
@@ -135,10 +126,7 @@ function formatObject(
 				formattedValue = formatCurrency(value);
 			}
 			// Format number fields
-			else if (
-				options?.numberFields?.includes(key) &&
-				typeof value === "number"
-			) {
+			else if (options?.numberFields?.includes(key) && typeof value === "number") {
 				formattedValue = formatNumber(value);
 			} else {
 				formattedValue = String(value);
@@ -202,8 +190,7 @@ export function toMarkdown(
 
 		// Try to infer if this is currency based on context or magnitude
 		const isCurrency =
-			options?.currencyFields !== undefined ||
-			(data > 1000 && Number.isFinite(data)); // Large numbers likely currency
+			options?.currencyFields !== undefined || (data > 1000 && Number.isFinite(data)); // Large numbers likely currency
 
 		if (isCurrency) {
 			formattedValue = formatCurrency(data);

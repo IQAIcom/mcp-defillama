@@ -62,51 +62,31 @@ async function createCache(
 
 export async function initializeCacheManager(): Promise<void> {
 	if (!env.GOOGLE_GENERATIVE_AI_API_KEY) {
-		logger.warn(
-			"GOOGLE_GENERATIVE_AI_API_KEY not found, caching will be disabled",
-		);
+		logger.warn("GOOGLE_GENERATIVE_AI_API_KEY not found, caching will be disabled");
 		return;
 	}
 
 	try {
 		cacheManager = new GoogleAICacheManager(env.GOOGLE_GENERATIVE_AI_API_KEY);
 
-		const protocolsContext = protocols
-			.map((p) => `${p.slug}|${p.name}|${p.symbol}`)
-			.join("\n");
+		const protocolsContext = protocols.map((p) => `${p.slug}|${p.name}|${p.symbol}`).join("\n");
 
 		const chainsContext = chains
 			.map((c) => `${c.name}|${c.tokenSymbol || ""}|${c.gecko_id || ""}`)
 			.join("\n");
 
-		const stablecoinsContext = stablecoins
-			.map((s) => `${s.id}|${s.name}|${s.symbol}`)
-			.join("\n");
+		const stablecoinsContext = stablecoins.map((s) => `${s.id}|${s.name}|${s.symbol}`).join("\n");
 
-		const bridgesContext = bridgeIds
-			.map((b) => `${b.id}|${b.name}|${b.displayName}`)
-			.join("\n");
+		const bridgesContext = bridgeIds.map((b) => `${b.id}|${b.name}|${b.displayName}`).join("\n");
 
-		cacheNames.protocols = await createCache(
-			protocolsInstruction,
-			protocolsContext,
-			"Protocols",
-		);
-		cacheNames.chains = await createCache(
-			chainsInstruction,
-			chainsContext,
-			"Chains",
-		);
+		cacheNames.protocols = await createCache(protocolsInstruction, protocolsContext, "Protocols");
+		cacheNames.chains = await createCache(chainsInstruction, chainsContext, "Chains");
 		cacheNames.stablecoins = await createCache(
 			stablecoinsInstruction,
 			stablecoinsContext,
 			"Stablecoins",
 		);
-		cacheNames.bridges = await createCache(
-			bridgesInstruction,
-			bridgesContext,
-			"Bridges",
-		);
+		cacheNames.bridges = await createCache(bridgesInstruction, bridgesContext, "Bridges");
 
 		logger.info("✅ All DefiLlama entity caches initialized successfully");
 	} catch (error) {

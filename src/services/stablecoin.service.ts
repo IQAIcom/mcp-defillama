@@ -131,10 +131,7 @@ export class StablecoinService extends BaseService {
 			});
 		} catch (error) {
 			const target = args.chain ?? "all chains";
-			throw logAndWrapError(
-				`Failed to fetch stablecoin charts for ${target}`,
-				error,
-			);
+			throw logAndWrapError(`Failed to fetch stablecoin charts for ${target}`, error);
 		}
 	}
 

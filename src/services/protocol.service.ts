@@ -25,9 +25,7 @@ export class ProtocolService extends BaseService {
 	 */
 	async getChains(args: { order: "asc" | "desc" }): Promise<string> {
 		try {
-			const data = await this.fetchData<ChainData[]>(
-				`${this.BASE_URL}/v2/chains`,
-			);
+			const data = await this.fetchData<ChainData[]>(`${this.BASE_URL}/v2/chains`);
 
 			const sorted = [...data].sort((a, b) => {
 				return args.order === "asc" ? a.tvl - b.tvl : b.tvl - a.tvl;
@@ -84,9 +82,7 @@ export class ProtocolService extends BaseService {
 				});
 			}
 
-			const data = await this.fetchData<ProtocolData[]>(
-				`${this.BASE_URL}/protocols`,
-			);
+			const data = await this.fetchData<ProtocolData[]>(`${this.BASE_URL}/protocols`);
 
 			const sorted = [...data].sort((a, b) => {
 				const aVal = a[args.sortCondition] || 0;
@@ -112,10 +108,7 @@ export class ProtocolService extends BaseService {
 			});
 		} catch (error) {
 			const target = args.protocol ?? `metric ${args.sortCondition}`;
-			throw logAndWrapError(
-				`Failed to fetch protocol data for ${target}`,
-				error,
-			);
+			throw logAndWrapError(`Failed to fetch protocol data for ${target}`, error);
 		}
 	}
 
@@ -135,17 +128,12 @@ export class ProtocolService extends BaseService {
 			}));
 
 			return await this.formatResponse(last10, {
-				title: args.chain
-					? `Historical TVL: ${args.chain}`
-					: "Historical TVL (All Chains)",
+				title: args.chain ? `Historical TVL: ${args.chain}` : "Historical TVL (All Chains)",
 				currencyFields: ["tvl"],
 			});
 		} catch (error) {
 			const target = args.chain ?? "all chains";
-			throw logAndWrapError(
-				`Failed to fetch historical TVL for ${target}`,
-				error,
-			);
+			throw logAndWrapError(`Failed to fetch historical TVL for ${target}`, error);
 		}
 	}
 }

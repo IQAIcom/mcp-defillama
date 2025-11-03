@@ -156,9 +156,7 @@ export type FeesSummaryResponse = {
 	totalAllTime?: number;
 	change_1d?: number;
 	totalDataChart?: Array<[number, number]>;
-	totalDataChartBreakdown?: Array<
-		[number, Record<string, Record<string, number>>]
-	>;
+	totalDataChartBreakdown?: Array<[number, Record<string, Record<string, number>>]>;
 	[key: string]: unknown;
 };
 
@@ -438,6 +436,4 @@ export type BlockData = {
  * Generic API response wrapper for unknown structures
  * Use this when the response structure is truly dynamic or unknown
  */
-export type ApiResponse =
-	| Record<string, unknown>
-	| Array<Record<string, unknown>>;
+export type ApiResponse = Record<string, unknown> | Array<Record<string, unknown>>;

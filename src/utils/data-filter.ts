@@ -186,10 +186,7 @@ export class LLMDataFilter {
 			const pattern = jq.compile(jqQuery);
 			let filteredData: JSONValue = pattern.evaluate(parsedData);
 
-			if (
-				!filteredData ||
-				(Array.isArray(filteredData) && filteredData.length === 0)
-			) {
+			if (!filteredData || (Array.isArray(filteredData) && filteredData.length === 0)) {
 				logger.debug("Filter returned empty data, using fallback");
 				return this.getFallbackData(parsedData);
 			}
@@ -283,10 +280,4 @@ interface JSONSchema {
 	items?: JSONSchema;
 }
 
-type JSONValue =
-	| string
-	| number
-	| boolean
-	| null
-	| JSONValue[]
-	| { [key: string]: JSONValue };
+type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };

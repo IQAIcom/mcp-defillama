@@ -7,11 +7,7 @@ import { options } from "../enums/options.js";
 import { protocols } from "../enums/protocols.js";
 import { stablecoins } from "../enums/stablecoinIds.js";
 import { createResolver } from "./base-resolver.js";
-import {
-	sanitizeChainName,
-	sanitizeNumericString,
-	sanitizeSlug,
-} from "./utils/sanitizers.js";
+import { sanitizeChainName, sanitizeNumericString, sanitizeSlug } from "./utils/sanitizers.js";
 import { needsResolution } from "./utils/validators.js";
 
 const logger = createChildLogger("DefiLlama MCP Entity Resolver");
@@ -22,11 +18,9 @@ const protocolResolver = createResolver({
 	entityType: "protocol slug",
 	cacheName: cacheNames.protocols,
 	entities: protocols,
-	getContext: (entities) =>
-		entities.map((p) => `${p.slug}|${p.name}|${p.symbol}`).join("\n"),
+	getContext: (entities) => entities.map((p) => `${p.slug}|${p.name}|${p.symbol}`).join("\n"),
 	sanitize: sanitizeSlug,
-	validate: (slug, entities) =>
-		entities.some((p) => p.slug.toLowerCase() === slug),
+	validate: (slug, entities) => entities.some((p) => p.slug.toLowerCase() === slug),
 	fallbackPrompt: (name, context) => dedent`
 		You are a protocol slug matcher for DefiLlama API.
 
@@ -63,9 +57,7 @@ const chainResolver = createResolver({
 	cacheName: cacheNames.chains,
 	entities: chains,
 	getContext: (entities) =>
-		entities
-			.map((c) => `${c.name}|${c.tokenSymbol || ""}|${c.gecko_id || ""}`)
-			.join("\n"),
+		entities.map((c) => `${c.name}|${c.tokenSymbol || ""}|${c.gecko_id || ""}`).join("\n"),
 	sanitize: sanitizeChainName,
 	validate: (chainName, entities) => entities.some((c) => c.name === chainName),
 	fallbackPrompt: (name, context) => dedent`
@@ -104,8 +96,7 @@ const stablecoinResolver = createResolver({
 	entityType: "stablecoin ID",
 	cacheName: cacheNames.stablecoins,
 	entities: stablecoins,
-	getContext: (entities) =>
-		entities.map((s) => `${s.id}|${s.name}|${s.symbol}`).join("\n"),
+	getContext: (entities) => entities.map((s) => `${s.id}|${s.name}|${s.symbol}`).join("\n"),
 	sanitize: sanitizeNumericString,
 	validate: (id, entities) => entities.some((s) => s.id === id),
 	fallbackPrompt: (name, context) => dedent`
@@ -143,8 +134,7 @@ const bridgeResolver = createResolver({
 	entityType: "bridge ID",
 	cacheName: cacheNames.bridges,
 	entities: bridgeIds,
-	getContext: (entities) =>
-		entities.map((b) => `${b.id}|${b.name}|${b.displayName}`).join("\n"),
+	getContext: (entities) => entities.map((b) => `${b.id}|${b.name}|${b.displayName}`).join("\n"),
 	sanitize: (output) => {
 		const id = sanitizeNumericString(output);
 		return Number(id);
@@ -207,8 +197,7 @@ export async function resolveOption(name: string): Promise<string | null> {
 	try {
 		const exactMatch = options.find(
 			(o) =>
-				o.name.toLowerCase() === name.toLowerCase() ||
-				o.slug.toLowerCase() === name.toLowerCase(),
+				o.name.toLowerCase() === name.toLowerCase() || o.slug.toLowerCase() === name.toLowerCase(),
 		);
 
 		if (exactMatch) {
@@ -223,9 +212,7 @@ export async function resolveOption(name: string): Promise<string | null> {
 		);
 
 		if (partialMatch) {
-			logger.info(
-				`Resolved option "${name}" → "${partialMatch.slug}" (partial match)`,
-			);
+			logger.info(`Resolved option "${name}" → "${partialMatch.slug}" (partial match)`);
 			return partialMatch.slug;
 		}
 

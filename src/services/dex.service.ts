@@ -30,9 +30,7 @@ export class DexService extends BaseService {
 	}): Promise<string> {
 		try {
 			const excludeTotalDataChart =
-				args.excludeTotalDataChart !== undefined
-					? args.excludeTotalDataChart
-					: true;
+				args.excludeTotalDataChart !== undefined ? args.excludeTotalDataChart : true;
 			const excludeTotalDataChartBreakdown =
 				args.excludeTotalDataChartBreakdown !== undefined
 					? args.excludeTotalDataChartBreakdown
@@ -80,9 +78,7 @@ export class DexService extends BaseService {
 					change_1m: protocol.change_1m,
 				}));
 
-				const title = args.chain
-					? `Top 10 DEXs on ${args.chain}`
-					: "Top 10 DEXs Globally";
+				const title = args.chain ? `Top 10 DEXs on ${args.chain}` : "Top 10 DEXs Globally";
 
 				return await this.formatResponse(top10, {
 					title,
@@ -95,9 +91,7 @@ export class DexService extends BaseService {
 				title: "DEX Data",
 			});
 		} catch (error) {
-			const target =
-				args.protocol ??
-				(args.chain ? `chain ${args.chain}` : "global overview");
+			const target = args.protocol ?? (args.chain ? `chain ${args.chain}` : "global overview");
 			throw logAndWrapError(`Failed to fetch DEX data for ${target}`, error);
 		}
 	}

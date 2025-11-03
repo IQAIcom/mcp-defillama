@@ -34,9 +34,7 @@ export class OptionsService extends BaseService {
 	}): Promise<string> {
 		try {
 			const excludeTotalDataChart =
-				args.excludeTotalDataChart !== undefined
-					? args.excludeTotalDataChart
-					: true;
+				args.excludeTotalDataChart !== undefined ? args.excludeTotalDataChart : true;
 			const excludeTotalDataChartBreakdown =
 				args.excludeTotalDataChartBreakdown !== undefined
 					? args.excludeTotalDataChartBreakdown
@@ -70,13 +68,8 @@ export class OptionsService extends BaseService {
 
 			return await this.processOptionsResponse(data, args);
 		} catch (error) {
-			const target =
-				args.protocol ??
-				(args.chain ? `chain ${args.chain}` : "global overview");
-			throw logAndWrapError(
-				`Failed to fetch options data for ${target}`,
-				error,
-			);
+			const target = args.protocol ?? (args.chain ? `chain ${args.chain}` : "global overview");
+			throw logAndWrapError(`Failed to fetch options data for ${target}`, error);
 		}
 	}
 

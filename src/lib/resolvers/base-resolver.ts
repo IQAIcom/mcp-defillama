@@ -40,10 +40,7 @@ export async function createResolver<T>(
 					})
 				: await generateText({
 						model: google(gemini25Flash),
-						prompt: config.fallbackPrompt(
-							name,
-							config.getContext(config.entities),
-						),
+						prompt: config.fallbackPrompt(name, config.getContext(config.entities)),
 						...(config.fallbackSystem && {
 							system: config.fallbackSystem,
 						}),
