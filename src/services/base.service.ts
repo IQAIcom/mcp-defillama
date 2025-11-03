@@ -49,14 +49,26 @@ export abstract class BaseService {
 		url: string,
 		cacheDurationSeconds: number = this.DEFAULT_CACHE_TTL_SECONDS,
 	): Promise<T> {
+		// Use IQ Gateway if configured, otherwise make direct API calls
+		if (env.IQ_GATEWAY_URL && env.IQ_GATEWAY_KEY) {
+			return this.fetchViaGateway<T>(url, cacheDurationSeconds);
+		}
+		return this.fetchDirect<T>(url);
+	}
+
+	/**
+	 * Fetch data via IQ Gateway (with caching and monitoring)
+	 */
+	private async fetchViaGateway<T>(url: string, cacheDurationSeconds: number): Promise<T> {
+		if (!env.IQ_GATEWAY_URL || !env.IQ_GATEWAY_KEY) {
+			throw new Error("IQ_GATEWAY_URL and IQ_GATEWAY_KEY must be configured to use gateway");
+		}
+
 		const proxyUrl = new URL(env.IQ_GATEWAY_URL);
 		proxyUrl.searchParams.append("url", url);
 		proxyUrl.searchParams.append("projectName", "defillama_mcp");
 		if (cacheDurationSeconds >= 0) {
-			proxyUrl.searchParams.append(
-				"cacheDuration",
-				Math.floor(cacheDurationSeconds).toString(),
-			);
+			proxyUrl.searchParams.append("cacheDuration", Math.floor(cacheDurationSeconds).toString());
 		}
 
 		try {
@@ -71,9 +83,34 @@ export abstract class BaseService {
 			if (axios.isAxiosError(error)) {
 				const errorPayload = error.response?.data ?? error.message;
 				const errorMessage =
-					typeof errorPayload === "string"
-						? errorPayload
-						: JSON.stringify(errorPayload);
+					typeof errorPayload === "string" ? errorPayload : JSON.stringify(errorPayload);
+				throw new Error(errorMessage);
+			}
+			throw error instanceof Error ? error : new Error(String(error));
+		}
+	}
+
+	/**
+	 * Fetch data directly from DefiLlama API
+	 */
+	private async fetchDirect<T>(url: string): Promise<T> {
+		try {
+			const headers: Record<string, string> = {
+				"Content-Type": "application/json",
+			};
+
+			// Add DefiLlama API key if provided
+			if (env.DEFILLAMA_API_KEY) {
+				headers["x-api-key"] = env.DEFILLAMA_API_KEY;
+			}
+
+			const response = await axios.get<T>(url, { headers });
+			return response.data;
+		} catch (error: unknown) {
+			if (axios.isAxiosError(error)) {
+				const errorPayload = error.response?.data ?? error.message;
+				const errorMessage =
+					typeof errorPayload === "string" ? errorPayload : JSON.stringify(errorPayload);
 				throw new Error(errorMessage);
 			}
 			throw error instanceof Error ? error : new Error(String(error));
@@ -116,25 +153,14 @@ export abstract class BaseService {
 
 		const tokenLength = encoder.encode(markdownOutput).length;
 		logger.info(`Response token length: ${tokenLength}`);
-		logger.info(
-			`Response token need filtering: ${tokenLength > config.maxTokens ? "Yes" : "No"}`,
-		);
-		logger.info(
-			`User query for filtering: ${this.currentQuery ? "Yes" : "No"}`,
-		);
+		logger.info(`Response token need filtering: ${tokenLength > config.maxTokens ? "Yes" : "No"}`);
+		logger.info(`User query for filtering: ${this.currentQuery ? "Yes" : "No"}`);
 		logger.info(`Data filter configured: ${this.dataFilter ? "Yes" : "No"}`);
 
-		if (
-			tokenLength > config.maxTokens &&
-			this.dataFilter &&
-			this.currentQuery
-		) {
+		if (tokenLength > config.maxTokens && this.dataFilter && this.currentQuery) {
 			try {
 				const jsonData = JSON.stringify(data);
-				const filteredJson = await this.dataFilter.filter(
-					jsonData,
-					this.currentQuery,
-				);
+				const filteredJson = await this.dataFilter.filter(jsonData, this.currentQuery);
 				markdownOutput = toMarkdown(JSON.parse(filteredJson), {
 					title: options?.title,
 					currencyFields: options?.currencyFields,
