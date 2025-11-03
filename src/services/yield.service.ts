@@ -42,7 +42,10 @@ export class YieldService extends BaseService {
 				numberFields: ["apy", "apyBase"],
 			});
 		} catch (error) {
-			throw logAndWrapError(`Failed to fetch historical pool data for ${args.pool}`, error);
+			throw logAndWrapError(
+				`Failed to fetch historical pool data for ${args.pool}`,
+				error,
+			);
 		}
 	}
 
@@ -55,7 +58,9 @@ export class YieldService extends BaseService {
 		limit: number;
 	}): Promise<string> {
 		try {
-			const data = await this.fetchData<PoolsResponse>(`${this.YIELDS_URL}/pools`);
+			const data = await this.fetchData<PoolsResponse>(
+				`${this.YIELDS_URL}/pools`,
+			);
 
 			const sorted = data.data.sort((a, b) => {
 				const aVal = (a[args.sortCondition as keyof typeof a] as number) || 0;

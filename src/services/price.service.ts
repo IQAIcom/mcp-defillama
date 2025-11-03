@@ -51,7 +51,10 @@ export class PriceService extends BaseService {
 				currencyFields: ["price"],
 			});
 		} catch (error) {
-			throw logAndWrapError(`Failed to fetch current prices for coins ${args.coins}`, error);
+			throw logAndWrapError(
+				`Failed to fetch current prices for coins ${args.coins}`,
+				error,
+			);
 		}
 	}
 
@@ -67,7 +70,10 @@ export class PriceService extends BaseService {
 				currencyFields: ["price"],
 			});
 		} catch (error) {
-			throw logAndWrapError(`Failed to fetch first recorded prices for coins ${args.coins}`, error);
+			throw logAndWrapError(
+				`Failed to fetch first recorded prices for coins ${args.coins}`,
+				error,
+			);
 		}
 	}
 
@@ -165,7 +171,10 @@ export class PriceService extends BaseService {
 				numberFields: ["percentage"],
 			});
 		} catch (error) {
-			throw logAndWrapError(`Failed to fetch percentage changes for coins ${args.coins}`, error);
+			throw logAndWrapError(
+				`Failed to fetch percentage changes for coins ${args.coins}`,
+				error,
+			);
 		}
 	}
 
@@ -188,7 +197,8 @@ export class PriceService extends BaseService {
 			if (args.end !== undefined) params.append("end", String(args.end));
 			if (args.span !== undefined) params.append("span", args.span.toString());
 			if (args.period) params.append("period", args.period);
-			if (args.searchWidth !== undefined) params.append("searchWidth", String(args.searchWidth));
+			if (args.searchWidth !== undefined)
+				params.append("searchWidth", String(args.searchWidth));
 
 			if (params.toString()) url += `?${params.toString()}`;
 
@@ -198,7 +208,10 @@ export class PriceService extends BaseService {
 				currencyFields: ["price"],
 			});
 		} catch (error) {
-			throw logAndWrapError(`Failed to fetch chart data for coins ${args.coins}`, error);
+			throw logAndWrapError(
+				`Failed to fetch chart data for coins ${args.coins}`,
+				error,
+			);
 		}
 	}
 }

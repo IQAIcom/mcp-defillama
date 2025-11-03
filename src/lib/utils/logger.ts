@@ -37,7 +37,12 @@ export interface LoggerOptions {
  * ```
  */
 export const createLogger = (options: LoggerOptions): winston.Logger => {
-	const { service, level = getLogLevelFromEnv(), colorize = true, timestamp = true } = options;
+	const {
+		service,
+		level = getLogLevelFromEnv(),
+		colorize = true,
+		timestamp = true,
+	} = options;
 
 	const formats: winston.Logform.Format[] = [];
 

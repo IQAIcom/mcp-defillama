@@ -2,11 +2,11 @@ import type { LanguageModel } from "ai";
 import axios from "axios";
 import { Tiktoken } from "js-tiktoken/lite";
 import cl100k_base from "js-tiktoken/ranks/cl100k_base";
+import { config } from "../config.js";
 import { env } from "../env.js";
 import { createChildLogger } from "../lib/utils/index.js";
 import { toMarkdown } from "../lib/utils/markdown-formatter.js";
 import { LLMDataFilter } from "../utils/data-filter.js";
-import { config } from "../config.js";
 
 const logger = createChildLogger("DefiLlama MCP Base Service");
 
@@ -59,16 +59,24 @@ export abstract class BaseService {
 	/**
 	 * Fetch data via IQ Gateway (with caching and monitoring)
 	 */
-	private async fetchViaGateway<T>(url: string, cacheDurationSeconds: number): Promise<T> {
+	private async fetchViaGateway<T>(
+		url: string,
+		cacheDurationSeconds: number,
+	): Promise<T> {
 		if (!env.IQ_GATEWAY_URL || !env.IQ_GATEWAY_KEY) {
-			throw new Error("IQ_GATEWAY_URL and IQ_GATEWAY_KEY must be configured to use gateway");
+			throw new Error(
+				"IQ_GATEWAY_URL and IQ_GATEWAY_KEY must be configured to use gateway",
+			);
 		}
 
 		const proxyUrl = new URL(env.IQ_GATEWAY_URL);
 		proxyUrl.searchParams.append("url", url);
 		proxyUrl.searchParams.append("projectName", "defillama_mcp");
 		if (cacheDurationSeconds >= 0) {
-			proxyUrl.searchParams.append("cacheDuration", Math.floor(cacheDurationSeconds).toString());
+			proxyUrl.searchParams.append(
+				"cacheDuration",
+				Math.floor(cacheDurationSeconds).toString(),
+			);
 		}
 
 		try {
@@ -83,7 +91,9 @@ export abstract class BaseService {
 			if (axios.isAxiosError(error)) {
 				const errorPayload = error.response?.data ?? error.message;
 				const errorMessage =
-					typeof errorPayload === "string" ? errorPayload : JSON.stringify(errorPayload);
+					typeof errorPayload === "string"
+						? errorPayload
+						: JSON.stringify(errorPayload);
 				throw new Error(errorMessage);
 			}
 			throw error instanceof Error ? error : new Error(String(error));
@@ -110,7 +120,9 @@ export abstract class BaseService {
 			if (axios.isAxiosError(error)) {
 				const errorPayload = error.response?.data ?? error.message;
 				const errorMessage =
-					typeof errorPayload === "string" ? errorPayload : JSON.stringify(errorPayload);
+					typeof errorPayload === "string"
+						? errorPayload
+						: JSON.stringify(errorPayload);
 				throw new Error(errorMessage);
 			}
 			throw error instanceof Error ? error : new Error(String(error));
@@ -153,14 +165,25 @@ export abstract class BaseService {
 
 		const tokenLength = encoder.encode(markdownOutput).length;
 		logger.info(`Response token length: ${tokenLength}`);
-		logger.info(`Response token need filtering: ${tokenLength > config.maxTokens ? "Yes" : "No"}`);
-		logger.info(`User query for filtering: ${this.currentQuery ? "Yes" : "No"}`);
+		logger.info(
+			`Response token need filtering: ${tokenLength > config.maxTokens ? "Yes" : "No"}`,
+		);
+		logger.info(
+			`User query for filtering: ${this.currentQuery ? "Yes" : "No"}`,
+		);
 		logger.info(`Data filter configured: ${this.dataFilter ? "Yes" : "No"}`);
 
-		if (tokenLength > config.maxTokens && this.dataFilter && this.currentQuery) {
+		if (
+			tokenLength > config.maxTokens &&
+			this.dataFilter &&
+			this.currentQuery
+		) {
 			try {
 				const jsonData = JSON.stringify(data);
-				const filteredJson = await this.dataFilter.filter(jsonData, this.currentQuery);
+				const filteredJson = await this.dataFilter.filter(
+					jsonData,
+					this.currentQuery,
+				);
 				markdownOutput = toMarkdown(JSON.parse(filteredJson), {
 					title: options?.title,
 					currencyFields: options?.currencyFields,

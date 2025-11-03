@@ -1,6 +1,5 @@
 import { type BaseTool, createTool } from "@iqai/adk";
 import { z } from "zod";
-import { createChildLogger } from "../lib/utils/index.js";
 import {
 	needsResolution,
 	resolveBridge,
@@ -9,6 +8,7 @@ import {
 	resolveProtocol,
 	resolveStablecoin,
 } from "../lib/resolvers/entity-resolver.js";
+import { createChildLogger } from "../lib/utils/index.js";
 import {
 	blockchainService,
 	dexService,
@@ -22,9 +22,11 @@ import {
 
 const logger = createChildLogger("DefiLlama MCP Tools");
 
-const unixTimestampArg = () => z.union([z.number().int().nonnegative(), z.string().min(1)]);
+const unixTimestampArg = () =>
+	z.union([z.number().int().nonnegative(), z.string().min(1)]);
 
-const optionalSearchWidthArg = () => z.union([z.string().min(1), z.number().positive()]).optional();
+const optionalSearchWidthArg = () =>
+	z.union([z.string().min(1), z.number().positive()]).optional();
 
 /**
  * Helper to set query on all services when _userQuery is provided in args
@@ -62,7 +64,9 @@ function extractQueryFromContext(context?: {
  * Automatically resolve human-friendly entity names to API-compatible IDs/slugs
  * Handles protocols, chains, stablecoins, bridges, and options
  */
-async function autoResolveEntities(args: Record<string, unknown>): Promise<void> {
+async function autoResolveEntities(
+	args: Record<string, unknown>,
+): Promise<void> {
 	// Protocol resolution
 	if (args.protocol && typeof args.protocol === "string") {
 		logger.info(`Resolving protocol: ${args.protocol}`);
@@ -104,7 +108,11 @@ async function autoResolveEntities(args: Record<string, unknown>): Promise<void>
 	}
 
 	// Bridge resolution
-	if (args.bridge && typeof args.bridge === "string" && needsResolution(args.bridge, "bridge")) {
+	if (
+		args.bridge &&
+		typeof args.bridge === "string" &&
+		needsResolution(args.bridge, "bridge")
+	) {
 		logger.info(`Resolving bridge: ${args.bridge}`);
 		const resolved = await resolveBridge(args.bridge);
 		if (resolved) {
@@ -116,7 +124,11 @@ async function autoResolveEntities(args: Record<string, unknown>): Promise<void>
 	}
 
 	// Option resolution
-	if (args.option && typeof args.option === "string" && needsResolution(args.option, "option")) {
+	if (
+		args.option &&
+		typeof args.option === "string" &&
+		needsResolution(args.option, "option")
+	) {
 		logger.info(`Resolving option: ${args.option}`);
 		const resolved = await resolveOption(args.option);
 		if (resolved) {
@@ -167,7 +179,9 @@ export const defillamaTools = [
 			sortCondition: z
 				.enum(["change_1h", "change_1d", "change_7d", "tvl"])
 				.default("tvl")
-				.describe("Field to sort results by. Only used when protocol parameter is omitted."),
+				.describe(
+					"Field to sort results by. Only used when protocol parameter is omitted.",
+				),
 			order: z
 				.enum(["asc", "desc"])
 				.default("desc")
@@ -233,7 +247,14 @@ export const defillamaTools = [
 					"Blockchain name - auto-resolved (e.g., 'Ethereum', 'BSC', 'Polygon', 'Arbitrum'). Returns overview of all DEXs operating on that chain. Only used when protocol is not specified. If both protocol and chain are omitted, returns global overview of all DEXs",
 				),
 			sortCondition: z
-				.enum(["total24h", "total7d", "total30d", "change_1d", "change_7d", "change_1m"])
+				.enum([
+					"total24h",
+					"total7d",
+					"total30d",
+					"change_1d",
+					"change_7d",
+					"change_1m",
+				])
 				.default("total24h")
 				.describe("Field to sort results by"),
 			order: z
@@ -247,7 +268,13 @@ export const defillamaTools = [
 			excludeTotalDataChartBreakdown: boolean;
 			protocol?: string;
 			chain?: string;
-			sortCondition: "total24h" | "total7d" | "total30d" | "change_1d" | "change_7d" | "change_1m";
+			sortCondition:
+				| "total24h"
+				| "total7d"
+				| "total30d"
+				| "change_1d"
+				| "change_7d"
+				| "change_1m";
 			order: "asc" | "desc";
 		}) => {
 			await autoResolveEntities(args);
@@ -325,7 +352,10 @@ export const defillamaTools = [
 		description:
 			"Fetches stablecoin data including circulation and price information. Returns top 20 stablecoins",
 		parameters: z.object({
-			includePrices: z.boolean().optional().describe("Whether to include price data"),
+			includePrices: z
+				.boolean()
+				.optional()
+				.describe("Whether to include price data"),
 			_userQuery: z.string().optional(),
 		}),
 		execute: async (args: { includePrices?: boolean; _userQuery?: string }) => {
@@ -336,7 +366,8 @@ export const defillamaTools = [
 
 	{
 		name: "defillama_get_stablecoin_chains",
-		description: "Fetches stablecoin data by chains. Returns last 3 chains with market cap data",
+		description:
+			"Fetches stablecoin data by chains. Returns last 3 chains with market cap data",
 		parameters: z.object({
 			_userQuery: z.string().optional(),
 		}),
@@ -378,7 +409,8 @@ export const defillamaTools = [
 
 	{
 		name: "defillama_get_stablecoin_prices",
-		description: "Fetches historical stablecoin price data. Returns last 3 data points",
+		description:
+			"Fetches historical stablecoin price data. Returns last 3 data points",
 		parameters: z.object({
 			_userQuery: z.string().optional(),
 		}),
@@ -407,7 +439,11 @@ export const defillamaTools = [
 				),
 			_userQuery: z.string().optional(),
 		}),
-		execute: async (args: { coins: string; searchWidth: string | number; _userQuery?: string }) => {
+		execute: async (args: {
+			coins: string;
+			searchWidth: string | number;
+			_userQuery?: string;
+		}) => {
 			setQueryFromArgs(args);
 			return await priceService.getPricesCurrentCoins(args);
 		},
@@ -441,7 +477,11 @@ export const defillamaTools = [
 					z.string().min(1),
 					z.record(
 						z.string(),
-						z.array(z.union([z.number().int().nonnegative(), z.string().min(1)])).min(1),
+						z
+							.array(
+								z.union([z.number().int().nonnegative(), z.string().min(1)]),
+							)
+							.min(1),
 					),
 				])
 				.describe(
@@ -695,7 +735,14 @@ export const defillamaTools = [
 					"Blockchain name - auto-resolved (e.g., 'Ethereum', 'Arbitrum', 'Optimism'). Returns overview of all options protocols operating on that chain. Only used when protocol is not specified. If both protocol and chain are omitted, returns global overview of all options protocols",
 				),
 			sortCondition: z
-				.enum(["total24h", "total7d", "total30d", "change_1d", "change_7d", "change_1m"])
+				.enum([
+					"total24h",
+					"total7d",
+					"total30d",
+					"change_1d",
+					"change_7d",
+					"change_1m",
+				])
 				.default("total24h")
 				.describe("Field to sort results by"),
 			order: z
@@ -716,7 +763,13 @@ export const defillamaTools = [
 			dataType: "dailyPremiumVolume" | "dailyNotionalVolume";
 			protocol?: string;
 			chain?: string;
-			sortCondition: "total24h" | "total7d" | "total30d" | "change_1d" | "change_7d" | "change_1m";
+			sortCondition:
+				| "total24h"
+				| "total7d"
+				| "total30d"
+				| "change_1d"
+				| "change_7d"
+				| "change_1m";
 			order: "asc" | "desc";
 			excludeTotalDataChart: boolean;
 			excludeTotalDataChartBreakdown: boolean;
@@ -744,7 +797,11 @@ export const defillamaTools = [
 			),
 			_userQuery: z.string().optional(),
 		}),
-		execute: async (args: { chain: string; timestamp: number | string; _userQuery?: string }) => {
+		execute: async (args: {
+			chain: string;
+			timestamp: number | string;
+			_userQuery?: string;
+		}) => {
 			await autoResolveEntities(args);
 			setQueryFromArgs(args);
 			return await blockchainService.getBlockChainTimestamp(args);
@@ -766,10 +823,12 @@ export const getDefillamaTools = (): BaseTool[] => {
 				// Extract and inject user query from context.userContent into all services
 				const query = extractQueryFromContext(context);
 				logger.info(
-					`Extracted user query from context: ${query ? query.substring(0, 100) + "..." : "none"}`,
+					`Extracted user query from context: ${query ? `${query.substring(0, 100)}...` : "none"}`,
 				);
 				if (query) {
-					logger.info(`Setting user query for filtering: ${query.substring(0, 100)}...`);
+					logger.info(
+						`Setting user query for filtering: ${query.substring(0, 100)}...`,
+					);
 					blockchainService.setQuery(query);
 					dexService.setQuery(query);
 					feesService.setQuery(query);
