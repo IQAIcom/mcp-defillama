@@ -225,6 +225,9 @@ If you have installed `defillama-mcp` globally (`pnpm add -g @iqai/defillama-mcp
 - `pnpm run watch` – compile on change
 - `pnpm run format` – format with Biome
 - `pnpm run lint` – lint with Biome
+- `pnpm changeset` – create a release note for the next publish
+- `pnpm version-packages` – apply pending changesets and bump package versions
+- `pnpm release` – build and publish using the accumulated changesets
 
 ## Features
 
