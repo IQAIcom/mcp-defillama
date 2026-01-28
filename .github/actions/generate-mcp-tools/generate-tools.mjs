@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "../../..");
@@ -10,6 +9,143 @@ const TOOLS_DIR = path.join(ROOT, "src", "tools");
 
 const START = "<!-- AUTO-GENERATED TOOLS START -->";
 const END = "<!-- AUTO-GENERATED TOOLS END -->";
+
+/**
+ * Check if a schema is a Zod v4 schema
+ */
+function isZodV4(schema) {
+	return schema && typeof schema === "object" && schema._zod?.def?.type;
+}
+
+/**
+ * Check if a schema is a Zod v3 schema
+ */
+function isZodV3(schema) {
+	return (
+		schema &&
+		typeof schema === "object" &&
+		typeof schema.safeParse === "function" &&
+		!isZodV4(schema)
+	);
+}
+
+/**
+ * Extract the base type from a Zod v4 schema property
+ */
+function extractZodV4BaseType(prop) {
+	if (!prop) return { type: "unknown" };
+
+	const def = prop._zod?.def || prop.def;
+	if (!def) {
+		// Check if it's a direct type
+		if (prop.type) return { type: prop.type };
+		return { type: "unknown" };
+	}
+
+	const wrapperType = def.type;
+
+	// Unwrap default/optional wrappers
+	if (wrapperType === "default" || wrapperType === "optional") {
+		const inner = def.innerType;
+		const baseInfo = extractZodV4BaseType(inner);
+
+		if (wrapperType === "default") {
+			baseInfo.default = def.defaultValue;
+		}
+		if (wrapperType === "optional") {
+			baseInfo.optional = true;
+		}
+		return baseInfo;
+	}
+
+	// Handle base types
+	switch (wrapperType) {
+		case "string":
+			return { type: "string" };
+		case "number":
+			return { type: "number" };
+		case "boolean":
+			return { type: "boolean" };
+		case "enum":
+			return {
+				type: "string",
+				enum: def.entries ? Object.keys(def.entries) : [],
+			};
+		case "array":
+			return { type: "array" };
+		case "object":
+			return { type: "object" };
+		case "union":
+			return { type: "union" };
+		default:
+			return { type: wrapperType || "unknown" };
+	}
+}
+
+/**
+ * Convert a Zod v4 schema to JSON Schema format
+ */
+function zodV4ToJsonSchema(schema) {
+	const def = schema._zod?.def;
+	if (!def || def.type !== "object") {
+		return { properties: {}, required: [] };
+	}
+
+	const shape = def.shape || {};
+	const properties = {};
+	const required = [];
+
+	for (const [key, prop] of Object.entries(shape)) {
+		const typeInfo = extractZodV4BaseType(prop);
+		const description = prop.description || "";
+
+		properties[key] = {
+			type: typeInfo.type,
+			description,
+		};
+
+		if (typeInfo.enum) {
+			properties[key].enum = typeInfo.enum;
+		}
+
+		if (typeInfo.default !== undefined) {
+			properties[key].default = typeInfo.default;
+		}
+
+		// If not optional and no default, it's required
+		if (!typeInfo.optional && typeInfo.default === undefined) {
+			required.push(key);
+		}
+	}
+
+	return { properties, required };
+}
+
+/**
+ * Convert any Zod schema to JSON Schema format
+ */
+async function zodToJsonSchema(schema) {
+	// Handle Zod v4
+	if (isZodV4(schema)) {
+		return zodV4ToJsonSchema(schema);
+	}
+
+	// Handle Zod v3 - dynamically import zod-to-json-schema
+	if (isZodV3(schema)) {
+		try {
+			const { zodToJsonSchema: zodV3ToJsonSchema } = await import(
+				"zod-to-json-schema"
+			);
+			return zodV3ToJsonSchema(schema);
+		} catch (err) {
+			console.warn("Warning: Could not use zod-to-json-schema:", err.message);
+			return { properties: {}, required: [] };
+		}
+	}
+
+	// Already JSON Schema or unknown format
+	return schema;
+}
 
 /**
  * Check if value is an MCP tool object
@@ -94,14 +230,12 @@ async function loadTools() {
 	return tools.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function renderSchema(schema) {
+async function renderSchema(schema) {
 	if (!schema) {
 		return "_No parameters_";
 	}
 
-	// If this is a Zod schema, convert it to JSON Schema
-	const jsonSchema =
-		typeof schema.safeParse === "function" ? zodToJsonSchema(schema) : schema;
+	const jsonSchema = await zodToJsonSchema(schema);
 
 	const properties = jsonSchema.properties ?? {};
 	const required = new Set(jsonSchema.required ?? []);
@@ -150,7 +284,7 @@ function renderSchema(schema) {
 	return table.trim();
 }
 
-function renderMarkdown(tools) {
+async function renderMarkdown(tools) {
 	let md = "";
 
 	for (const tool of tools) {
@@ -158,18 +292,16 @@ function renderMarkdown(tools) {
 
 		md += `### \`${tool.name}\`\n`;
 		md += `${tool.description}\n\n`;
-		md += `${renderSchema(schema)}\n\n`;
+		md += `${await renderSchema(schema)}\n\n`;
 	}
 
 	return md.trim();
 }
 
-function updateReadme({ readme, tools }) {
+function updateReadme({ readme, toolsMd }) {
 	if (!readme.includes(START) || !readme.includes(END)) {
 		throw new Error("README missing AUTO-GENERATED TOOLS markers");
 	}
-
-	const toolsMd = renderMarkdown(tools);
 
 	return readme.replace(
 		new RegExp(`${START}[\\s\\S]*?${END}`, "m"),
@@ -186,7 +318,8 @@ async function main() {
 			console.warn("Warning: No tools found!");
 		}
 
-		const updated = updateReadme({ readme, tools });
+		const toolsMd = await renderMarkdown(tools);
+		const updated = updateReadme({ readme, toolsMd });
 
 		fs.writeFileSync(README_PATH, updated);
 		console.log(`Synced ${tools.length} MCP tools to README.md`);
