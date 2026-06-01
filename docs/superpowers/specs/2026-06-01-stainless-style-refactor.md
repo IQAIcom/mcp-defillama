@@ -336,6 +336,24 @@ Side-effect-free metadata with the `lazyMethod` factory; one entry per endpoint
 (`{name, qualified, sandboxImpl, description, parameters, responseSchema,
 exampleCall}`), `qualified = defillama.<group>.<method>`.
 
+**Schemas must mirror `*Raw()`, not the legacy tools (review finding).** The
+catalog `parameters` and `responseSchema` are load-bearing: `client.ts`
+`safeParse`s guest args against `parameters` before calling `rawFn`, and
+`get_endpoint_schema` / `jq_filter` authoring rely on `responseSchema`. So they
+must describe the **raw upstream** method, not the legacy projected surface:
+
+- **`parameters`** = the `*Raw()` upstream args **only**. Drop the client-side-only
+  params the legacy schemas carry — `order` on chains
+  ([tools/index.ts:154](../../../src/tools/index.ts)), `sortCondition`/`order`/`limit`
+  on yield pools ([tools/index.ts:648](../../../src/tools/index.ts)), etc. (those now
+  live in the legacy tool layer per the Phase-1 contract, not in `*Raw()`). Keep
+  genuine upstream params (`coins`, `chain`, `protocol`, `excludeTotalDataChart`,
+  `dataType`, `searchWidth`).
+- **`responseSchema`** = the **full upstream payload** shape, not the legacy
+  top-N / essential-field projection. An agent writing a `jq_filter` against a
+  schema that claims `{name, tvl}` when the endpoint really returns the full
+  `/v2/chains` objects will build wrong projections.
+
 **Author descriptions clean from the start (review finding).** These
 `description` strings are agent-facing — they feed the generated docs index,
 `search_docs`, and instructions (Phase 4). Do **not** copy the current tool
@@ -344,8 +362,8 @@ write deterministic-resolution wording here so the search/docs surface is never
 seeded with stale AI claims. (The catalog's resolution semantics don't depend on
 the resolver existing yet — it lands in Phase 3 — only on describing it correctly.)
 
-- `src/mcp/catalog/tool-metadata.ts` *(new — 19 entries; descriptions written for deterministic resolution, no "via AI")*
-- `src/mcp/catalog/response-schemas.ts` *(new)*
+- `src/mcp/catalog/tool-metadata.ts` *(new — 19 entries; `parameters` = `*Raw()` upstream args only; descriptions written for deterministic resolution, no "via AI")*
+- `src/mcp/catalog/response-schemas.ts` *(new — full upstream payload shapes, not legacy projections)*
 - **Tests:** `src/mcp/catalog/tool-metadata.import.test.ts` (side-effect-freeness), `tool-metadata.test.ts`
 
 ### Phase 3 — Deterministic entity resolver
