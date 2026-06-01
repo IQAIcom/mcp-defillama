@@ -122,9 +122,13 @@ re-pointed at the new tools and stripped of the query plumbing.
   `tsconfig.scripts.json` and `start` does not pass `--no-node-snapshot`.
 - `src/env.ts` uses bare `config()` from dotenv — **no `{quiet:true}`** and **no
   path resolution relative to `import.meta.url`** (gotchas #1, #2).
-- Dependencies the target **drops** (LLM filter + LLM resolvers): `@ai-sdk/google`,
-  `@google/generative-ai`, `@openrouter/ai-sdk-provider`, `ai`, `js-tiktoken`.
-  Dependencies that **stay**: `@iqai/adk` (D-3), `jqts`, `zod`, `axios`, `dedent`,
+- Dependencies the target **drops**, staged by when their last consumer is
+  deleted: `@openrouter/ai-sdk-provider` + `js-tiktoken` in **Phase 1** (filter),
+  `@ai-sdk/google` + `@google/generative-ai` + `ai` in **Phase 3** (Gemini
+  resolver/cache — `ai` lingers because the filter *and* the resolver both import
+  it). Env keys follow the same staging: `OPENROUTER_API_KEY`/`LLM_MODEL` (P1),
+  `GOOGLE_GENERATIVE_AI_API_KEY` (P3). Dependencies that **stay**: `@iqai/adk`
+  (D-3), `jqts`, `zod`, `axios`, `dedent` (reused by `execute/client.ts`),
   `fastmcp`, `winston`.
 - Untracked WIP present: `src/lib/cache/CACHING_IMPLEMENTATION.md`, `docs/`.
 
@@ -284,7 +288,8 @@ build/tests stay green. (The legacy surface and ADK move/delete happen in Phase
 - `src/tools/index.ts` *(rewire each tool onto `*Raw()` → `JSON.stringify`; strip `_userQuery`/`setQuery`/context plumbing; keep `autoResolveEntities` on the existing LLM resolvers for now)*
 - `src/types.ts` *(keep/extend response types)*
 - `src/config.ts` *(replace `maxTokens` with per-group cache TTLs; no `baseUrl`)*
-- `package.json` *(add `test`/`pretest` scripts; devdeps `vitest`, `@vitest/coverage-v8`, `msw`, `cross-env`; `pretest: tsc`)*
+- `src/env.ts` *(remove the **filter** env keys `OPENROUTER_API_KEY` + `LLM_MODEL` from the zod schema; the dotenv-mechanics rewrite + `DEFILLAMA_MCP_TOOLS` stay for Phase 8)*
+- `package.json` *(add `test`/`pretest` scripts; devdeps `vitest`, `@vitest/coverage-v8`, `msw`, `cross-env`; `pretest: tsc`. **Remove now-unused deps `@openrouter/ai-sdk-provider` + `js-tiktoken`** — both used only by the deleted filter/openrouter modules. `ai`, `@ai-sdk/google`, `@google/generative-ai` stay until Phase 3 (still used by the Gemini resolver); `dedent` stays for `execute/client.ts`.)*
 - **Delete:** `src/utils/data-filter.ts`, `src/lib/utils/markdown-formatter.ts`, `src/lib/integrations/openrouter.ts`
 - **Tests:** `src/services/base.service.test.ts` + one `*.service.test.ts` per service (msw-mocked)
 - *(Add ADR: `docs/adr/0001-no-host-side-response-filter.md`, DefiLlama-flavored)*
@@ -311,10 +316,21 @@ rewire `src/tools/index.ts`'s `autoResolveEntities` onto the new resolver — on
 that's the only consumer of the old LLM resolvers, delete them. ADK and the
 legacy surface stay green throughout.
 
+**Mechanical-rewire hazard (review finding 2):** the legacy code assigns the
+resolver result straight to `args.chain` ([src/tools/index.ts:87](../../../src/tools/index.ts)),
+which is then interpolated into service URLs. Since `resolveChain` now returns an
+**object**, the rewire must assign **`resolved.name`** (the display-name form the
+legacy URLs already use), not the object — `args.chain = resolved.name`.
+Protocols/stablecoins still resolve to scalars, so those assignments are
+unchanged. Bridge/option auto-resolution is dropped (no current tool takes a
+`bridge` or `option` arg; the new resolver doesn't provide them).
+
 - `src/lib/entity-resolver.ts` *(new — `resolveChain` → `{name, slug}`, `resolveProtocol`, `resolveStablecoin`; live catalog + TTL cache + alias table + bundled fallback)*
 - `src/enums/` *(new — bundled DefiLlama catalogs as fallback)*
-- `src/tools/index.ts` *(rewire `autoResolveEntities` onto the new resolver)*
-- **Delete:** `src/lib/resolvers/` (LLM resolvers, base-resolver, sanitizers, validators), `src/lib/enums/` (old static catalogs), `src/lib/cache/` (Gemini cached-content manager — confirm unused first)
+- `src/tools/index.ts` *(rewire `autoResolveEntities` onto the new resolver; `args.chain = resolved.name`; drop bridge/option resolution)*
+- `src/env.ts` *(remove the **resolver** env key `GOOGLE_GENERATIVE_AI_API_KEY` from the zod schema)*
+- `package.json` *(**remove now-unused deps `@ai-sdk/google`, `@google/generative-ai`, `ai`** — last users were the Gemini resolver + cache, both deleted here)*
+- **Delete:** `src/lib/resolvers/` (LLM resolvers, base-resolver, sanitizers, validators), `src/lib/enums/` (old static catalogs), `src/lib/cache/` (Gemini cached-content manager + `instructions.ts` — confirm unused first)
 - **Tests:** `src/lib/entity-resolver.test.ts`
 
 ### Phase 4 — Build-time codegen
@@ -349,7 +365,7 @@ legacy surface stay green throughout.
 ### Phase 8 — Server entry + ADK adapter rewrite
 
 - `src/index.ts` *(rewrite: register `execute` + `search_docs`; gate dynamic on `--tools=dynamic`/`DEFILLAMA_MCP_TOOLS=dynamic`; pass `instructions`; semver assert)*
-- `src/env.ts` *(rewrite: `config({quiet:true})` from script dir; add `DEFILLAMA_MCP_TOOLS`; drop LLM keys)*
+- `src/env.ts` *(dotenv mechanics: `config({quiet:true})` resolved from script dir; add `DEFILLAMA_MCP_TOOLS`. LLM keys already removed in Phases 1 & 3.)*
 - `src/adk/index.ts` *(new — `getDefillamaTools()` adapter over execute/search_docs/dynamic; no `_userQuery`/context plumbing) — D-3*
 - `src/mcp/instructions/instructions.md` *(flesh out — operational guide; see C8)*
 - **Delete:** `src/tools/index.ts` (legacy 19-tool surface + old ADK wrapper)
