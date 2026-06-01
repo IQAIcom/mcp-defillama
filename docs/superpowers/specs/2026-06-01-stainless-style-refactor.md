@@ -28,6 +28,12 @@ These resolve the would-be open questions and shape §2–§4:
   intentionally diverge from the reference, which has no ADK export.
 - **D-4 — Keep the multi-base-URL service split.** Services stay grouped by
   domain, each owning its own `*.llama.fi` host; there is no single `baseUrl`.
+- **D-5 — One giant refactor PR, not PRs in bits.** The entire refactor (Phases
+  1–9) lands as a **single PR** on one branch, with one changeset for the
+  breaking change. The phases are the internal commit order / build checkpoints
+  within that branch, not separate reviews — kept green at each boundary so the
+  history stays bisectable. (This design doc, Phase 0, is the planning artifact
+  that precedes the refactor branch.)
 
 ---
 
@@ -256,10 +262,14 @@ response schemas, DeBank's cookbook contents, the bundled DeBank `chains.ts`.
 
 ## 3. Phase-by-phase plan
 
-Each phase is one PR; `pnpm build` + `pnpm test` green between phases. Phase 0 is
-this document.
+**The whole refactor ships as a single PR (D-5), not one PR per phase.** The
+phases below are the **internal commit/build order on one branch** — a sequence,
+not nine separate reviews. Keep `pnpm build` + `pnpm test` green at every phase
+boundary so the branch stays bisectable and reviewable commit-by-commit, but the
+deliverable is one consolidated refactor PR with a single changeset. Phase 0 (this
+design doc) is the planning artifact that seeds the branch.
 
-### Phase 0 — Audit + design doc ✅ (this PR)
+### Phase 0 — Audit + design doc ✅ (planning artifact)
 
 - `docs/superpowers/specs/2026-06-01-stainless-style-refactor.md` *(new — this file)*
 
