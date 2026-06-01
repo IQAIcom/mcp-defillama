@@ -59,6 +59,14 @@ The 19 tools, grouped by the service that backs them:
 | `options.service.ts` | `defillama_get_options_data` |
 | `blockchain.service.ts` | `defillama_get_blockchain_timestamp` |
 
+**19 is the tool count, not the upstream-endpoint count.** Four of these tools
+**multiplex** — they hit different DefiLlama endpoints with different response
+shapes depending on args: `get_protocol_data` (`/protocol/{slug}` single object vs
+`/protocols` array), and `get_dexs_data` / `get_fees_and_revenue` /
+`get_options_data` (each `/summary/…/{protocol}` detail vs `/overview/…[/{chain}]`
+list). This matters for the `*Raw()`/catalog split in Phases 1–2 (see the split
+table in Phase 1) — the catalog ends up with ~23 entries, not 19.
+
 ### 1.2 Services return rendered markdown, not JSON
 
 Every service method returns `Promise<string>` — a **markdown blob**, not raw
@@ -306,6 +314,24 @@ result in each tool's `execute` (transitional; deleted with that file in Phase 8
 Client-side-only params (`sortCondition`, `order`, `limit`) leave the `*Raw()`
 signature and live in the legacy tool layer until then.
 
+**Split multiplexed tools — one `*Raw()` per upstream endpoint, not per tool
+(review finding).** Four current tools dispatch to **different upstream endpoints
+with different response shapes** depending on args, and must split into one
+`*Raw()` each (one clear shape per method, so the Phase-2 `responseSchema` isn't
+forced into a union):
+
+| Legacy tool | Splits into `*Raw()` |
+|---|---|
+| `getProtocolData` | `getProtocolRaw` (`/protocol/{slug}`, single object) + `getProtocolsRaw` (`/protocols`, array) |
+| `getDexsData` | `getDexSummaryRaw` (`/summary/dexs/{protocol}`) + `getDexsOverviewRaw` (`/overview/dexs[/{chain}]`) |
+| `getFeesAndRevenue` | `getFeesSummaryRaw` (`/summary/fees/{protocol}`) + `getFeesOverviewRaw` (`/overview/fees[/{chain}]`) |
+| `getOptionsData` | `getOptionsSummaryRaw` (`/summary/options/{protocol}`) + `getOptionsOverviewRaw` (`/overview/options[/{chain}]`) |
+
+The legacy tool's `execute` keeps its current arg-based dispatch, now choosing
+which `*Raw()` to call. `getHistoricalChainTvl` and `getStableCoinCharts` do
+**not** split — they only vary an optional path segment (`/{chain}` vs all) and
+return the same shape, so the optional `chain` arg stays a single method.
+
 **Keep this phase buildable (review finding 1).** Deleting `formatResponse`
 breaks the legacy tools, which call markdown-returning methods like `getChains()`
 ([src/tools/index.ts:162](../../../src/tools/index.ts)). So in the **same phase**,
@@ -319,7 +345,7 @@ build/tests stay green. (The legacy surface and ADK move/delete happen in Phase
 8.) Test tooling is added here, not later (review finding 5).
 
 - `src/services/base.service.ts` *(rewrite: `RequestOptions`, IQ-Gateway+direct w/ signal/timeout, drop filter/markdown)*
-- `src/services/{protocol,dex,fees,stablecoin,price,yield,options,blockchain}.service.ts` *(rewrite to `*Raw`)*
+- `src/services/{protocol,dex,fees,stablecoin,price,yield,options,blockchain}.service.ts` *(rewrite to `*Raw`; split the 4 multiplexed methods — protocol/dex/fees/options — into one `*Raw()` per upstream endpoint per the table above)*
 - `src/services/index.ts` *(drop `setAIModel` wiring + `openrouter` import → side-effect-free)*
 - `src/tools/index.ts` *(rewire each tool onto `*Raw()`; apply the legacy top-N/sort/essential-field projection **here**, on top of the full `*Raw()` result, then `JSON.stringify`; strip `_userQuery`/`setQuery`/context plumbing; keep `autoResolveEntities` on the existing LLM resolvers for now)*
 - `src/types.ts` *(keep/extend response types)*
@@ -332,9 +358,12 @@ build/tests stay green. (The legacy surface and ADK move/delete happen in Phase
 
 ### Phase 2 — `catalog/tool-metadata.ts` + `response-schemas.ts`
 
-Side-effect-free metadata with the `lazyMethod` factory; one entry per endpoint
-(`{name, qualified, sandboxImpl, description, parameters, responseSchema,
-exampleCall}`), `qualified = defillama.<group>.<method>`.
+Side-effect-free metadata with the `lazyMethod` factory; **one entry per upstream
+endpoint** (`{name, qualified, sandboxImpl, description, parameters,
+responseSchema, exampleCall}`), `qualified = defillama.<group>.<method>`. Note
+**19 is the current *tool* count, not the endpoint count** — the 4 multiplexed
+tools split into 2 `*Raw()` each (Phase 1), so the catalog has **~23 entries**,
+one per upstream endpoint, each with a single-shape `responseSchema`.
 
 **Schemas must mirror `*Raw()`, not the legacy tools (review finding).** The
 catalog `parameters` and `responseSchema` are load-bearing: `client.ts`
@@ -362,7 +391,7 @@ write deterministic-resolution wording here so the search/docs surface is never
 seeded with stale AI claims. (The catalog's resolution semantics don't depend on
 the resolver existing yet — it lands in Phase 3 — only on describing it correctly.)
 
-- `src/mcp/catalog/tool-metadata.ts` *(new — 19 entries; `parameters` = `*Raw()` upstream args only; descriptions written for deterministic resolution, no "via AI")*
+- `src/mcp/catalog/tool-metadata.ts` *(new — ~23 entries, one per upstream endpoint (4 multiplexed tools split); `parameters` = `*Raw()` upstream args only; descriptions written for deterministic resolution, no "via AI")*
 - `src/mcp/catalog/response-schemas.ts` *(new — full upstream payload shapes, not legacy projections)*
 - **Tests:** `src/mcp/catalog/tool-metadata.import.test.ts` (side-effect-freeness), `tool-metadata.test.ts`
 
