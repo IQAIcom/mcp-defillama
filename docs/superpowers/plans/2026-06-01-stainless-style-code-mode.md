@@ -101,7 +101,12 @@ Single source of truth for Phases 1 (methods) and 2 (catalog). `host` column: `a
 **Files:**
 - Modify: `package.json`
 - Create: `vitest.config.ts`
-- Create: `tests/integration/setup.ts` (msw server bootstrap — copy structure from `debank-mcp/tests/integration/setup.ts`)
+
+> The Phase-1 service unit tests each spin up their **own inline** `setupServer()`
+> (see the sketches below), so no shared msw bootstrap is needed yet.
+> `tests/integration/setup.ts` is created in **Phase 5** with the rest of the
+> integration harness — don't create it here (it would leave this task's commit
+> with an unreferenced file).
 
 - [ ] **Step 1: Add deps and scripts.** In `package.json`:
   - devDeps: `vitest`, `@vitest/coverage-v8`, `msw`, `cross-env`.
@@ -164,6 +169,49 @@ describe("BaseService direct fetch", () => {
 });
 ```
 
+  **Gateway-branch test — env is read at module-load (finding).** `src/env.ts`
+  calls `envSchema.parse(process.env)` at import time, and `services/index.ts`
+  constructs the singletons at import time, so a statically-imported
+  `protocolService` has already captured whatever env was present when the test
+  file first loaded. To exercise the IQ Gateway branch you **must** set env →
+  `vi.resetModules()` → **dynamically** re-import, in a separate test file or a
+  scoped block (don't mix with the static import above):
+
+```ts
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
+
+const server = setupServer();
+
+describe("BaseService IQ Gateway branch", () => {
+	afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); server.resetHandlers(); });
+
+	it("routes through the gateway with url/projectName/cacheDuration + x-api-key", async () => {
+		vi.stubEnv("IQ_GATEWAY_URL", "https://gw.test/proxy");
+		vi.stubEnv("IQ_GATEWAY_KEY", "k");
+		vi.resetModules(); // drop cached env.ts + services/index.ts so they re-parse with the stubbed env
+		const seen: { url: string; key: string | null } = { url: "", key: null };
+		server.listen({ onUnhandledRequest: "error" });
+		server.use(
+			http.get("https://gw.test/proxy", ({ request }) => {
+				seen.url = request.url;
+				seen.key = request.headers.get("x-api-key");
+				return HttpResponse.json([{ name: "Ethereum", tvl: 1 }]);
+			}),
+		);
+		const { protocolService } = await import("./index.js"); // dynamic re-import AFTER resetModules
+		await protocolService.getChainsRaw();
+		const u = new URL(seen.url);
+		expect(u.origin + u.pathname).toBe("https://gw.test/proxy");
+		expect(u.searchParams.get("url")).toContain("api.llama.fi/v2/chains");
+		expect(u.searchParams.get("projectName")).toBe("defillama_mcp");
+		expect(seen.key).toBe("k");
+		server.close();
+	});
+});
+```
+
 - [ ] **Step 2: Run red.** Run: `pnpm vitest run src/services/base.service.test.ts` → Expected: FAIL (`getChainsRaw` not a function / formatResponse still present).
 
 - [ ] **Step 3: Rewrite `base.service.ts`.** Replace the whole file with the DeBank shape, keeping DefiLlama's four host constants and DEFILLAMA_API_KEY header. Reference: `debank-mcp/src/services/base.service.ts`. Concretely:
@@ -188,7 +236,31 @@ describe("BaseService direct fetch", () => {
 5. For multiplexed services, split the single method into the two `*Raw` methods named in the table; each builds only its own URL (no arg-branching inside `*Raw`).
 6. Keep `toUnixSeconds`/`encodeURIComponent` coercions (see Reference notes).
 
-**Files:** `src/services/{protocol,dex,fees,stablecoin,price,yield,options,blockchain}.service.ts`; tests `src/services/<name>.service.test.ts`.
+**Files:** `src/config.ts`; `src/services/{protocol,dex,fees,stablecoin,price,yield,options,blockchain}.service.ts`; tests `src/services/<name>.service.test.ts`.
+
+- [ ] **Step 0: Rewrite `config.ts` FIRST (finding — ordering).** The worked
+  examples below reference `config.protocolTtl`/`config.dexTtl`/`config.priceTtl`
+  etc., and `pretest: tsc` (plus a later `pnpm build`) will type-fail if `config`
+  still only has `maxTokens`. So land the TTL config here, before converting any
+  service:
+
+```ts
+export const config = {
+	protocolTtl: 60 * 60,
+	dexTtl: 60 * 60,
+	feesTtl: 60 * 60,
+	optionsTtl: 60 * 60,
+	stablecoinTtl: 60 * 60,
+	priceTtl: 5 * 60,
+	yieldTtl: 30 * 60,
+	blockchainTtl: 60 * 60,
+} as const;
+```
+
+  (Tasks 1.2 + 1.3 + 1.4 + 1.5 are mutually dependent — base service, config,
+  services, filter deletion, and the legacy rewire — and land as **one commit**;
+  the full build only goes green after 1.5. The per-task `pnpm vitest run`
+  checkpoints don't run `tsc` and so can pass earlier.)
 
 - [ ] **Step 1: Worked example A — protocol (split + full payload).** Rewrite `protocol.service.ts`:
 
@@ -283,37 +355,19 @@ it("getLatestPoolsRaw returns the full pools payload (no slice/sort)", async () 
 ```
 
 - [ ] **Step 7: Run green.** Run: `pnpm vitest run src/services` → Expected: PASS.
-- [ ] **Step 8: Commit.**
-
-```bash
-git add src/services tests/integration/setup.ts
-git commit -m "refactor!: services return full upstream JSON via *Raw(); split multiplexed endpoints"
-```
+- [ ] **Step 8: Stage (commit lands with 1.5).** `git add src/config.ts src/services` — the
+  full build only goes green after the legacy rewire (1.5), so don't commit a
+  broken `tsc` mid-way; stage now and commit at 1.5 Step 5.
 
 ### Task 1.4 — Delete the host-side filter + markdown
 
-**Files:** Delete `src/utils/data-filter.ts`, `src/lib/utils/markdown-formatter.ts`, `src/lib/integrations/openrouter.ts`. Modify `src/services/index.ts`, `src/config.ts`, `src/env.ts`.
+**Files:** Delete `src/utils/data-filter.ts`, `src/lib/utils/markdown-formatter.ts`, `src/lib/integrations/openrouter.ts`. Modify `src/services/index.ts`, `src/env.ts`. (`config.ts` was already rewritten in Task 1.3 Step 0.)
 
 - [ ] **Step 1: `services/index.ts`** — remove the `openrouter` import and the `setAIModel(...)` broadcast block (lines ~6, ~38-47). Keep the eight singleton exports. Module is now side-effect-free.
-- [ ] **Step 2: `config.ts`** — replace `{ maxTokens }` with per-group TTLs:
-
-```ts
-export const config = {
-	protocolTtl: 60 * 60,
-	dexTtl: 60 * 60,
-	feesTtl: 60 * 60,
-	optionsTtl: 60 * 60,
-	stablecoinTtl: 60 * 60,
-	priceTtl: 5 * 60,
-	yieldTtl: 30 * 60,
-	blockchainTtl: 60 * 60,
-} as const;
-```
-
-- [ ] **Step 3: `env.ts`** — remove `OPENROUTER_API_KEY` and `LLM_MODEL` from the zod schema (keep `IQ_GATEWAY_*`, `DEFILLAMA_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY` for now).
-- [ ] **Step 4: Delete the three files.** Run: `git rm src/utils/data-filter.ts src/lib/utils/markdown-formatter.ts src/lib/integrations/openrouter.ts`
-- [ ] **Step 5: Build.** Run: `pnpm build` → Expected: type errors only from `src/tools/index.ts` (still calls old methods) — fixed in Task 1.5. If errors appear elsewhere, fix imports.
-- [ ] **Step 6: Commit (with 1.5).**
+- [ ] **Step 2: `env.ts`** — remove `OPENROUTER_API_KEY` and `LLM_MODEL` from the zod schema (keep `IQ_GATEWAY_*`, `DEFILLAMA_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY` for now).
+- [ ] **Step 3: Delete the three files.** Run: `git rm src/utils/data-filter.ts src/lib/utils/markdown-formatter.ts src/lib/integrations/openrouter.ts`
+- [ ] **Step 4: Build.** Run: `pnpm build` → Expected: type errors only from `src/tools/index.ts` (still calls old methods) — fixed in Task 1.5. If errors appear elsewhere, fix imports.
+- [ ] **Step 5: Stage (commit lands with 1.5).** `git add src/services/index.ts src/env.ts` plus the deletions.
 
 ### Task 1.5 — Rewire the legacy 19 tools onto `*Raw()`
 
@@ -339,11 +393,12 @@ execute: async (args) => {
   For `defillama_get_protocol_data`: if `args.protocol` → `getProtocolRaw` then pick essential fields; else `getProtocolsRaw` then sort+top10. For dex/fees/options: dispatch summary vs overview, apply overview top10/field-pick. `autoResolveEntities` stays unchanged (still uses old LLM resolvers).
 - [ ] **Step 3: Build.** Run: `pnpm build` → Expected: PASS (clean).
 - [ ] **Step 4: Smoke test the rewired tools.** Add `src/tools/index.test.ts` with one msw-backed case asserting a tool returns JSON-stringified projected output (e.g. chains tool returns top-20 sorted). Run: `pnpm vitest run src/tools` → Expected: PASS.
-- [ ] **Step 5: Commit.**
+- [ ] **Step 5: Commit (the whole 1.2–1.5 unit).** Everything staged across Tasks
+  1.2–1.4 plus this task lands as one green commit:
 
 ```bash
-git add src/tools/index.ts src/services/index.ts src/config.ts src/env.ts src/tools/index.test.ts
-git commit -m "refactor!: rewire legacy tools onto *Raw(); move projection to tool layer; drop LLM filter"
+git add src/services src/config.ts src/env.ts src/tools/index.ts src/tools/index.test.ts
+git commit -m "refactor!: services return full JSON via *Raw(); rewire legacy tools; drop host-side filter"
 ```
 
 ### Task 1.6 — ADR
@@ -386,8 +441,57 @@ export const PoolsSchema = z.object({
 
 **Files:** Create `src/mcp/catalog/tool-metadata.ts`; Tests `src/mcp/catalog/tool-metadata.import.test.ts`, `tool-metadata.test.ts`.
 
-- [ ] **Step 1: Write the import test first (the invariant).** Copy the mechanism from `debank-mcp/src/mcp/legacy/tool-metadata.import.test.ts`: importing `tool-metadata.ts` must not touch the network or construct service singletons. Assert no `axios` call fires on import (msw `onUnhandledRequest: "error"` + a bare `import`).
-- [ ] **Step 2: Run red.** Run: `pnpm vitest run src/mcp/catalog/tool-metadata.import.test.ts` → FAIL (module missing).
+- [ ] **Step 1: Write the import test first (the invariant) — deterministic, not "no axios fired".**
+  The real invariant is *"importing `tool-metadata.js` does not load `services/index.js`"* (that's what `lazyMethod`'s dynamic import buys us). "No network call" is too weak — it would miss an accidental **value** import of `services/index.ts` that constructs the 8 singletons and pulls `env.ts` without making a request. And debank's scrubbed-env trick (a transitive `env.ts` import throws because debank *requires* a key) **does not transfer**: DefiLlama's `env.ts` makes every field optional, so a transitive `env.ts` parse wouldn't fail. So use a **child process with a resolve hook that hard-fails if `services/index.js` is ever resolved.**
+
+  Create `tests/probes/forbid-services-index.hooks.mjs`:
+
+```js
+export async function resolve(specifier, context, nextResolve) {
+	const r = await nextResolve(specifier, context);
+	if (r.url.endsWith("/services/index.js")) {
+		throw new Error("FORBIDDEN: services/index.js was loaded during tool-metadata import");
+	}
+	return r;
+}
+```
+
+  Create `tests/probes/forbid-services-index.register.mjs`:
+
+```js
+import { register } from "node:module";
+register("./forbid-services-index.hooks.mjs", import.meta.url);
+```
+
+  The test spawns a child that imports the **built** `dist/mcp/catalog/tool-metadata.js` under that hook, with scrubbed env + tmp cwd (belt-and-braces), and asserts clean exit + the expected entry count:
+
+```ts
+import { spawnSync } from "node:child_process";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+
+describe("tool-metadata side-effect-freeness", () => {
+	it("imports without loading services/index.js (no singleton construction)", () => {
+		const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+		const dist = path.resolve(root, "dist/mcp/catalog/tool-metadata.js");
+		const register = path.resolve(root, "tests/probes/forbid-services-index.register.mjs");
+		const res = spawnSync("node", [
+			"--import", register, "--input-type=module", "-e",
+			`import { TOOL_METADATA } from ${JSON.stringify(dist)}; process.stdout.write(String(TOOL_METADATA.length));`,
+		], { cwd: mkdtempSync(path.join(tmpdir(), "dfl-meta-")), env: { PATH: process.env.PATH ?? "", DOTENV_CONFIG_PATH: "/dev/null" }, timeout: 8_000 });
+		expect(res.status, `stderr: ${res.stderr?.toString()}`).toBe(0); // resolve-hook throw → non-zero
+		expect(res.stdout.toString()).toBe("23");
+	});
+});
+```
+
+  (Requires `pnpm build` first — `pretest`/`pnpm test` already runs it. The
+  test imports the dist artifact, matching debank's approach.)
+
+- [ ] **Step 2: Run red.** Run: `pnpm test` (builds, then runs) → Expected: FAIL (module missing / entry count mismatch).
 - [ ] **Step 3: Write `tool-metadata.ts`.** Copy the `lazyMethod` factory and `ToolMetadata` type from `debank-mcp/src/mcp/legacy/tool-metadata.ts` (type-only import of `../../services/index.js`; dynamic import inside the thunk). Add the `ServiceKey` union for the 8 DefiLlama services. Write **~23 entries** from the Reference table. Each entry:
   - `name`: legacy tool name where one exists, else a sensible `defillama_*` name for the split halves (e.g. `defillama_get_protocol` / `defillama_get_protocols`).
   - `qualified`: from the table.
@@ -510,13 +614,13 @@ export async function resolveChain(input: string): Promise<ChainResolved | null>
 
 **Goal:** `isolated-vm` sandbox + `defillama.*` client with budget/concurrency/timeout caps and bridge-layer validation.
 
-**Files:** Create `src/mcp/execute/{scope,sandbox,tool,client}.ts` + their `*.test.ts`; integration `tests/integration/{execute.test.ts, lazy-isolated-vm.test.ts, no-isolated-vm.register.mjs, no-isolated-vm.hooks.mjs}`; modify `package.json`.
+**Files:** Create `src/mcp/execute/{scope,sandbox,tool,client}.ts` + their `*.test.ts`; integration `tests/integration/{setup.ts, execute.test.ts, lazy-isolated-vm.test.ts, no-isolated-vm.register.mjs, no-isolated-vm.hooks.mjs}`; modify `package.json`.
 
 - [ ] **Step 1:** `package.json` — add `optionalDependencies: { "isolated-vm": "^6.1.2" }`, `pnpm.onlyBuiltDependencies: ["esbuild","isolated-vm","msw"]`, `engines.node: ">=22"`, and `--no-node-snapshot` on `start`. Run `pnpm install`.
 - [ ] **Step 2:** Copy `src/mcp/execute/scope.ts` from debank verbatim; rename env vars `DEBANK_MCP_EXECUTE_*` → `DEFILLAMA_MCP_EXECUTE_*`. Copy its `scope.test.ts`; adjust env names.
 - [ ] **Step 3:** Copy `src/mcp/execute/sandbox.ts` and `tool.ts` from debank verbatim (lazy `isolated-vm` import already there). Copy their tests; rename the global namespace `debank` → `defillama` in any assertions.
 - [ ] **Step 4:** Copy `src/mcp/execute/client.ts` from debank and adapt **only**: (a) `parseQualified` prefix check `"debank"` → `"defillama"`; (b) global namespace `debank` → `defillama`; (c) the resolver install list at the bottom — install `resolveChain` (returns `{name,slug}`), `resolveProtocol`, `resolveStablecoin` (all async; no `resolveWrappedToken`/sync variant); (d) import `TOOL_METADATA` from `../catalog/tool-metadata.js`. Keep the envelope contract, dual-timeout, `safeParse` bridge validation, and `cancelScope` wiring unchanged. Copy `client.test.ts`; adapt names.
-- [ ] **Step 5:** Copy the integration harness files (`no-isolated-vm.register.mjs`, `no-isolated-vm.hooks.mjs`) verbatim; adapt `lazy-isolated-vm.test.ts` tool names/qualified ids and `execute.test.ts` to a DefiLlama call (e.g. `await defillama.protocol.getChains()` then project).
+- [ ] **Step 5:** Copy the integration harness files (`tests/integration/setup.ts`, `no-isolated-vm.register.mjs`, `no-isolated-vm.hooks.mjs`) verbatim from debank; adapt `lazy-isolated-vm.test.ts` tool names/qualified ids and `execute.test.ts` to a DefiLlama call (e.g. `await defillama.protocol.getChains()` then project). (`setup.ts` lands here, not in Phase 1 — see Task 1.1 note.)
 - [ ] **Step 6:** Run: `pnpm test` → Expected: PASS (isolated-vm tests run under `--no-node-snapshot`; no-isolated-vm path proves graceful degradation).
 - [ ] **Step 7: Commit.** `git commit -m "feat(execute): isolated-vm sandbox + defillama.* bridge with scope caps"`
 
