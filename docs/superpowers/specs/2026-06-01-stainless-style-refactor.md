@@ -282,6 +282,30 @@ Delete `formatResponse`, `setQuery`, `setAIModel`, `currentQuery`, `aiModel`,
 Gateway branch (D-2) and the four hosts (D-4); add `signal`/`timeout`
 pass-through. `@iqai/adk` stays in `package.json` (D-3).
 
+**`*Raw()` contract — return the FULL upstream payload, no host-side projection
+(review finding).** Today's methods both fetch *and* shape: top-20 chains
+([protocol.service.ts:40](../../../src/services/protocol.service.ts)), top-10
+protocols + "essential fields" cherry-pick
+([protocol.service.ts:69](../../../src/services/protocol.service.ts)), top-20
+stablecoins ([stablecoin.service.ts:42](../../../src/services/stablecoin.service.ts)).
+`*Raw()` must do **none** of that — it returns the raw upstream JSON and maps only
+**genuine upstream query params** (e.g. `coins`, `chain`, `protocol`,
+`excludeTotalDataChart`, `dataType`, `searchWidth`) into the request. **No
+client-side sort, no top-N slice, no field-picking** inside `*Raw()`. Two reasons
+this is non-negotiable:
+
+1. **Code Mode** puts projection in the sandbox (agent JS) / `jq_filter`, not the
+   host. A `*Raw()` that pre-slices defeats the architecture.
+2. **The Phase 3 resolver reads full catalogs** (`/v2/chains`, `/protocols`,
+   stablecoins list) through these very methods. A top-20 slice in `getChainsRaw()`
+   would make every chain outside the top 20 unresolvable.
+
+The current top-N / sort / essential-field logic that legacy tools still need
+moves **into `src/tools/index.ts` only**, applied on top of the full `*Raw()`
+result in each tool's `execute` (transitional; deleted with that file in Phase 8).
+Client-side-only params (`sortCondition`, `order`, `limit`) leave the `*Raw()`
+signature and live in the legacy tool layer until then.
+
 **Keep this phase buildable (review finding 1).** Deleting `formatResponse`
 breaks the legacy tools, which call markdown-returning methods like `getChains()`
 ([src/tools/index.ts:162](../../../src/tools/index.ts)). So in the **same phase**,
@@ -297,7 +321,7 @@ build/tests stay green. (The legacy surface and ADK move/delete happen in Phase
 - `src/services/base.service.ts` *(rewrite: `RequestOptions`, IQ-Gateway+direct w/ signal/timeout, drop filter/markdown)*
 - `src/services/{protocol,dex,fees,stablecoin,price,yield,options,blockchain}.service.ts` *(rewrite to `*Raw`)*
 - `src/services/index.ts` *(drop `setAIModel` wiring + `openrouter` import → side-effect-free)*
-- `src/tools/index.ts` *(rewire each tool onto `*Raw()` → `JSON.stringify`; strip `_userQuery`/`setQuery`/context plumbing; keep `autoResolveEntities` on the existing LLM resolvers for now)*
+- `src/tools/index.ts` *(rewire each tool onto `*Raw()`; apply the legacy top-N/sort/essential-field projection **here**, on top of the full `*Raw()` result, then `JSON.stringify`; strip `_userQuery`/`setQuery`/context plumbing; keep `autoResolveEntities` on the existing LLM resolvers for now)*
 - `src/types.ts` *(keep/extend response types)*
 - `src/config.ts` *(replace `maxTokens` with per-group cache TTLs; no `baseUrl`)*
 - `src/env.ts` *(remove the **filter** env keys `OPENROUTER_API_KEY` + `LLM_MODEL` from the zod schema; the dotenv-mechanics rewrite + `DEFILLAMA_MCP_TOOLS` stay for Phase 8)*
