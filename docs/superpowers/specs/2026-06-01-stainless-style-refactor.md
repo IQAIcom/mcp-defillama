@@ -312,7 +312,15 @@ Side-effect-free metadata with the `lazyMethod` factory; one entry per endpoint
 (`{name, qualified, sandboxImpl, description, parameters, responseSchema,
 exampleCall}`), `qualified = defillama.<group>.<method>`.
 
-- `src/mcp/catalog/tool-metadata.ts` *(new — 19 entries)*
+**Author descriptions clean from the start (review finding).** These
+`description` strings are agent-facing — they feed the generated docs index,
+`search_docs`, and instructions (Phase 4). Do **not** copy the current tool
+copy's "auto-resolved via AI" wording ([tools/index.ts:171,177,389](../../../src/tools/index.ts));
+write deterministic-resolution wording here so the search/docs surface is never
+seeded with stale AI claims. (The catalog's resolution semantics don't depend on
+the resolver existing yet — it lands in Phase 3 — only on describing it correctly.)
+
+- `src/mcp/catalog/tool-metadata.ts` *(new — 19 entries; descriptions written for deterministic resolution, no "via AI")*
 - `src/mcp/catalog/response-schemas.ts` *(new)*
 - **Tests:** `src/mcp/catalog/tool-metadata.import.test.ts` (side-effect-freeness), `tool-metadata.test.ts`
 
@@ -339,7 +347,7 @@ unchanged. Bridge/option auto-resolution is dropped (no current tool takes a
 
 - `src/lib/entity-resolver.ts` *(new — `resolveChain` → `{name, slug}`, `resolveProtocol`, `resolveStablecoin`; live catalog + TTL cache + alias table + bundled fallback)*
 - `src/enums/` *(new — bundled DefiLlama catalogs as fallback)*
-- `src/tools/index.ts` *(rewire `autoResolveEntities` onto the new resolver; `args.chain = resolved.name`; drop bridge/option resolution; **update tool descriptions that claim resolution happens "via AI"** — [tools/index.ts:171,177,389](../../../src/tools/index.ts) — to say deterministic catalog resolution, since this surface lives until Phase 8)*
+- `src/tools/index.ts` *(rewire `autoResolveEntities` onto the new resolver; `args.chain = resolved.name`; drop bridge/option resolution; **update the legacy tool descriptions that claim resolution happens "via AI"** — [tools/index.ts:171,177,389](../../../src/tools/index.ts) — to deterministic wording, since this surface lives until Phase 8. The catalog descriptions were already authored clean in Phase 2, so only this legacy file needs the copy fix.)*
 - `src/env.ts` *(remove the **resolver** env key `GOOGLE_GENERATIVE_AI_API_KEY` from the zod schema)*
 - `package.json` *(**remove now-unused deps `@ai-sdk/google`, `@google/generative-ai`, `ai`** — last users were the Gemini resolver + cache, both deleted here)*
 - **Delete:** `src/lib/resolvers/` (LLM resolvers, base-resolver, sanitizers, validators), `src/lib/enums/` (old static catalogs), `src/lib/cache/` (Gemini cached-content manager + `instructions.ts` — confirm unused first)
