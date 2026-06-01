@@ -270,6 +270,10 @@ response schemas, DeBank's cookbook contents, the bundled DeBank `chains.ts`.
 
 ## 3. Phase-by-phase plan
 
+> **Execution plan:** the bite-sized, TDD task breakdown for these phases lives at
+> [`docs/superpowers/plans/2026-06-01-stainless-style-code-mode.md`](../plans/2026-06-01-stainless-style-code-mode.md).
+> This section is the high-level map; that plan is what an implementer executes.
+
 **The whole refactor ships as a single PR (D-5), not one PR per phase.** The
 phases below are the **internal commit/build order on one branch** — a sequence,
 not nine separate reviews. Keep `pnpm build` + `pnpm test` green at every phase
