@@ -113,8 +113,10 @@ re-pointed at the new tools and stripped of the query plumbing.
   `pretest`/`test` scripts.
 - **No build-time codegen.** No `scripts/`, no `prebuild`, no embedded docs
   index, no generated instructions.
-- **No `isolated-vm`, no `minisearch`, no `tsx`, no `zod-to-json-schema`,
-  no `cross-env`.**
+- **No `isolated-vm`, no `minisearch`, no `tsx`, no `cross-env`.** (Schema→JSON
+  uses Zod 4's built-in `z.toJSONSchema`, already available via `zod@^4.1.11` —
+  **not** the `zod-to-json-schema` package, which peers on Zod 3 and only appears
+  as a transitive in the lockfile.)
 - **No FastMCP `instructions`** passed to the server constructor.
 - `package.json` has **no `engines.node`** and **no `pnpm.onlyBuiltDependencies`**;
   README recommends **Node 18**.
@@ -327,7 +329,7 @@ unchanged. Bridge/option auto-resolution is dropped (no current tool takes a
 
 - `src/lib/entity-resolver.ts` *(new — `resolveChain` → `{name, slug}`, `resolveProtocol`, `resolveStablecoin`; live catalog + TTL cache + alias table + bundled fallback)*
 - `src/enums/` *(new — bundled DefiLlama catalogs as fallback)*
-- `src/tools/index.ts` *(rewire `autoResolveEntities` onto the new resolver; `args.chain = resolved.name`; drop bridge/option resolution)*
+- `src/tools/index.ts` *(rewire `autoResolveEntities` onto the new resolver; `args.chain = resolved.name`; drop bridge/option resolution; **update tool descriptions that claim resolution happens "via AI"** — [tools/index.ts:171,177,389](../../../src/tools/index.ts) — to say deterministic catalog resolution, since this surface lives until Phase 8)*
 - `src/env.ts` *(remove the **resolver** env key `GOOGLE_GENERATIVE_AI_API_KEY` from the zod schema)*
 - `package.json` *(**remove now-unused deps `@ai-sdk/google`, `@google/generative-ai`, `ai`** — last users were the Gemini resolver + cache, both deleted here)*
 - **Delete:** `src/lib/resolvers/` (LLM resolvers, base-resolver, sanitizers, validators), `src/lib/enums/` (old static catalogs), `src/lib/cache/` (Gemini cached-content manager + `instructions.ts` — confirm unused first)
@@ -339,7 +341,7 @@ unchanged. Bridge/option auto-resolution is dropped (no current tool takes a
 - `src/mcp/search-docs/embedded-index.ts` *(generated)*
 - `src/mcp/instructions/instructions.generated.ts` *(generated)*
 - `src/mcp/instructions/instructions.md` *(stub here; fleshed out in Phase 8 — see C9)*
-- `package.json` *(`build:docs`, `build:instructions`, `prebuild`; `pretest` now runs `prebuild`+`tsc`; devdeps `tsx`, `zod-to-json-schema`, `minisearch`)*
+- `package.json` *(`build:docs`, `build:instructions`, `prebuild`; `pretest` now runs `prebuild`+`tsc`; devdeps `tsx`, `minisearch`. **No `zod-to-json-schema`** — the copied scripts call Zod 4's built-in `z.toJSONSchema(...)` (review finding 1); debank does the same despite its vestigial devDep listing.)*
 
 ### Phase 5 — Sandbox + bridge
 
