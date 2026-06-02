@@ -11,6 +11,9 @@ import { dynamicConvenienceTools } from "./mcp/tools.js";
 const logger = createChildLogger("DefiLlama MCP");
 
 const require = createRequire(import.meta.url);
+const { version: rawVersion } = require("../package.json") as {
+	version: string;
+};
 
 type SemverString = `${number}.${number}.${number}`;
 /**
@@ -29,9 +32,7 @@ function semverCore(v: string): SemverString {
 	}
 	return `${m[1]}.${m[2]}.${m[3]}` as SemverString;
 }
-const { version: rawVersion } = require("../package.json") as {
-	version: string;
-};
+
 const version: SemverString = semverCore(rawVersion);
 
 function dynamicToolsEnabled(): boolean {
