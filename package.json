@@ -32,10 +32,7 @@
 	"author": "IQAI",
 	"license": "ISC",
 	"dependencies": {
-		"@ai-sdk/google": "^2.0.23",
-		"@google/generative-ai": "^0.24.1",
 		"@iqai/adk": "^0.3.6",
-		"ai": "^5.0.77",
 		"axios": "^1.12.2",
 		"dedent": "^1.7.0",
 		"dotenv": "^17.2.3",

@@ -1,13 +1,10 @@
 import { type BaseTool, createTool } from "@iqai/adk";
 import { z } from "zod";
 import {
-	needsResolution,
-	resolveBridge,
 	resolveChain,
-	resolveOption,
 	resolveProtocol,
 	resolveStablecoin,
-} from "../lib/resolvers/entity-resolver.js";
+} from "../lib/entity-resolver.js";
 import { createChildLogger } from "../lib/utils/index.js";
 import {
 	blockchainService,
@@ -46,7 +43,7 @@ function sortByNumericField<T>(
 
 /**
  * Automatically resolve human-friendly entity names to API-compatible IDs/slugs
- * Handles protocols, chains, stablecoins, bridges, and options
+ * using DefiLlama's live catalogs. Handles protocols, chains, and stablecoins.
  */
 async function autoResolveEntities(
 	args: Record<string, unknown>,
@@ -54,72 +51,38 @@ async function autoResolveEntities(
 	// Protocol resolution
 	if (args.protocol && typeof args.protocol === "string") {
 		logger.info(`Resolving protocol: ${args.protocol}`);
-		const resolved = await resolveProtocol(args.protocol);
-		if (resolved) {
-			logger.info(`Resolved "${args.protocol}" → "${resolved}"`);
-			args.protocol = resolved;
+		const p = await resolveProtocol(args.protocol);
+		if (p) {
+			logger.info(`Resolved "${args.protocol}" → "${p}"`);
+			args.protocol = p;
 		} else {
 			logger.warn(`Could not resolve protocol: ${args.protocol}`);
 		}
 	}
 
-	// Chain resolution
+	// Chain resolution — assign the display name form (feeds api.llama.fi /
+	// stablecoins URLs), never the {name, slug} object or the slug.
 	if (args.chain && typeof args.chain === "string") {
 		logger.info(`Resolving chain: ${args.chain}`);
-		const resolved = await resolveChain(args.chain);
-		if (resolved) {
-			logger.info(`Resolved "${args.chain}" → "${resolved}"`);
-			args.chain = resolved;
+		const r = await resolveChain(args.chain);
+		if (r) {
+			logger.info(`Resolved "${args.chain}" → "${r.name}"`);
+			args.chain = r.name;
 		} else {
 			logger.warn(`Could not resolve chain: ${args.chain}`);
 		}
 	}
 
-	// Stablecoin resolution (for stablecoin parameter)
-	if (
-		args.stablecoin &&
-		typeof args.stablecoin === "string" &&
-		needsResolution(args.stablecoin, "stablecoin")
-	) {
+	// Stablecoin resolution — resolveStablecoin passes numeric input through, so
+	// no gating is needed.
+	if (args.stablecoin != null) {
 		logger.info(`Resolving stablecoin: ${args.stablecoin}`);
-		const resolved = await resolveStablecoin(args.stablecoin);
-		if (resolved) {
-			logger.info(`Resolved "${args.stablecoin}" → ID ${resolved}`);
-			args.stablecoin = resolved;
+		const s = await resolveStablecoin(String(args.stablecoin));
+		if (s) {
+			logger.info(`Resolved "${args.stablecoin}" → ID ${s}`);
+			args.stablecoin = s;
 		} else {
 			logger.warn(`Could not resolve stablecoin: ${args.stablecoin}`);
-		}
-	}
-
-	// Bridge resolution
-	if (
-		args.bridge &&
-		typeof args.bridge === "string" &&
-		needsResolution(args.bridge, "bridge")
-	) {
-		logger.info(`Resolving bridge: ${args.bridge}`);
-		const resolved = await resolveBridge(args.bridge);
-		if (resolved) {
-			logger.info(`Resolved "${args.bridge}" → ID ${resolved}`);
-			args.bridge = resolved;
-		} else {
-			logger.warn(`Could not resolve bridge: ${args.bridge}`);
-		}
-	}
-
-	// Option resolution
-	if (
-		args.option &&
-		typeof args.option === "string" &&
-		needsResolution(args.option, "option")
-	) {
-		logger.info(`Resolving option: ${args.option}`);
-		const resolved = await resolveOption(args.option);
-		if (resolved) {
-			logger.info(`Resolved "${args.option}" → "${resolved}"`);
-			args.option = resolved;
-		} else {
-			logger.warn(`Could not resolve option: ${args.option}`);
 		}
 	}
 }
@@ -156,13 +119,13 @@ export const defillamaTools = [
 	{
 		name: "defillama_get_protocol_data",
 		description:
-			"Fetches TVL (Total Value Locked) data for DeFi protocols. **AUTO-RESOLUTION ENABLED:** Pass protocol names as users mention them (e.g., 'Lido', 'Uniswap', 'Aave', 'MakerDAO') - they're automatically resolved to correct slugs via AI. For multiple versions, specify the version (e.g., 'Aave V3') or the most common version is matched. If protocol parameter is omitted, returns top 10 protocols sorted by your chosen criteria.",
+			"Fetches TVL (Total Value Locked) data for DeFi protocols. **AUTO-RESOLUTION ENABLED:** Pass protocol names as users mention them (e.g., 'Lido', 'Uniswap', 'Aave', 'MakerDAO') - they're resolved to the correct API slug via DefiLlama's live protocol catalog. For multiple versions, specify the version (e.g., 'Aave V3') or the most common version is matched. If protocol parameter is omitted, returns top 10 protocols sorted by your chosen criteria.",
 		parameters: z.object({
 			protocol: z
 				.string()
 				.optional()
 				.describe(
-					"Protocol name as mentioned by the user - auto-resolved via AI (e.g., 'Lido', 'Uniswap', 'Aave V3', 'Curve', 'MakerDAO'). Exact slugs also work. Flexible matching handles name variations. If omitted, returns top 10 protocols sorted by the specified condition.",
+					"Protocol name as mentioned by the user - resolved to the API slug via DefiLlama's live protocol catalog (e.g., 'Lido', 'Uniswap', 'Aave V3', 'Curve', 'MakerDAO'). Exact slugs also work. If omitted, returns top 10 protocols sorted by the specified condition.",
 				),
 			sortCondition: z
 				.enum(["change_1h", "change_1d", "change_7d", "tvl"])

@@ -83,9 +83,7 @@ Add the following configuration to your MCP client settings (e.g., `claude_deskt
       "args": ["dlx", "@iqai/defillama-mcp"],
       "env": {
         "IQ_GATEWAY_URL": "your_iq_gateway_url",
-        "IQ_GATEWAY_KEY": "your_iq_gateway_key",
-        "OPENROUTER_API_KEY": "your_openrouter_api_key_if_needed",
-        "LLM_MODEL": "openai/gpt-4.1-mini"
+        "IQ_GATEWAY_KEY": "your_iq_gateway_key"
       }
     }
   }
@@ -97,11 +95,8 @@ Add the following configuration to your MCP client settings (e.g., `claude_deskt
 | Variable | Required | Description | Default |
 | :--- | :--- | :--- | :--- |
 | `DEFILLAMA_API_KEY` | No | Your DefiLlama API key | - |
-| `IQ_GATEWAY_URL` | No | Custom IQ Gateway URL for enhanced resolution | - |
+| `IQ_GATEWAY_URL` | No | Custom IQ Gateway URL for caching/proxying upstream requests | - |
 | `IQ_GATEWAY_KEY` | No | API key for IQ Gateway access | - |
-| `OPENROUTER_API_KEY` | No | API key for OpenRouter LLM integration | - |
-| `LLM_MODEL` | No | LLM model to use for entity resolution | `openai/gpt-4.1-mini` |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | No | Google Generative AI API key | - |
 
 ## 💡 Usage Examples
 
