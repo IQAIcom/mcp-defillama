@@ -24,9 +24,11 @@ describe("tool-metadata side-effect-freeness", () => {
 			"../../..",
 		);
 		const dist = path.resolve(root, "dist/mcp/catalog/tool-metadata.js");
-		// This probe imports the BUILT artifact, so a prior `tsc` is required.
-		// `pnpm test` covers it via pretest; bare `pnpm vitest run` does NOT —
-		// run `pnpm build && pnpm vitest run` instead. Fail loudly if dist is missing.
+		/*
+		 * This probe imports the BUILT artifact, so a prior `tsc` is required.
+		 * `pnpm test` covers it via pretest; bare `pnpm vitest run` does NOT —
+		 * run `pnpm build && pnpm vitest run` instead. Fail loudly if dist is missing.
+		 */
 		expect(
 			existsSync(dist),
 			`Built artifact missing: ${dist}. Run \`pnpm build\` first (or \`pnpm test\`, which builds via pretest).`,

@@ -30,8 +30,10 @@ describe("BaseService direct fetch branch", () => {
 	});
 	afterAll(() => server.close());
 
-	// Reset module registry and env stubs before each test so we always get a
-	// fresh env.ts parse with NO gateway vars set, regardless of run order.
+	/*
+	 * Reset module registry and env stubs before each test so we always get a
+	 * fresh env.ts parse with NO gateway vars set, regardless of run order.
+	 */
 	beforeEach(() => {
 		vi.unstubAllEnvs();
 		vi.resetModules();
@@ -53,8 +55,10 @@ describe("BaseService direct fetch branch", () => {
 			}),
 		);
 
-		// Import INSIDE the test (after beforeEach reset) so env.ts re-parses
-		// process.env without any gateway vars.
+		/*
+		 * Import INSIDE the test (after beforeEach reset) so env.ts re-parses
+		 * process.env without any gateway vars.
+		 */
 		const { protocolService } = await import("./index.js");
 		const result = await protocolService.getChainsRaw();
 
@@ -150,8 +154,10 @@ describe("BaseService forwards RequestOptions to axios", () => {
 	});
 
 	it("forwards signal and honors timeout: 0 (not omitted)", async () => {
-		// Import INSIDE the test (after beforeEach reset) so env.ts re-parses
-		// process.env without any gateway vars, exercising the direct-fetch path.
+		/*
+		 * Import INSIDE the test (after beforeEach reset) so env.ts re-parses
+		 * process.env without any gateway vars, exercising the direct-fetch path.
+		 */
 		const { protocolService } = await import("./index.js");
 
 		const getSpy = vi
@@ -172,8 +178,10 @@ describe("BaseService forwards RequestOptions to axios", () => {
 	});
 
 	it("omits the timeout key when no timeout is supplied", async () => {
-		// Import INSIDE the test (after beforeEach reset) so env.ts re-parses
-		// process.env without any gateway vars, exercising the direct-fetch path.
+		/*
+		 * Import INSIDE the test (after beforeEach reset) so env.ts re-parses
+		 * process.env without any gateway vars, exercising the direct-fetch path.
+		 */
 		const { protocolService } = await import("./index.js");
 
 		const getSpy = vi

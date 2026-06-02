@@ -65,8 +65,10 @@ export async function acquireSlot(scope: ExecutionScope): Promise<void> {
 export function releaseSlot(scope: ExecutionScope): void {
 	const next = scope.semaphore.queue.shift();
 	if (next) {
-		// Hand the permit straight to the next waiter: net change to `current`
-		// is zero (one holder out, one in), closing the race window.
+		/*
+		 * Hand the permit straight to the next waiter: net change to `current`
+		 * is zero (one holder out, one in), closing the race window.
+		 */
 		next();
 	} else {
 		scope.semaphore.current -= 1;

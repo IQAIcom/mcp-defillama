@@ -29,12 +29,14 @@ function wrap(tool: CodeModeTool): BaseTool {
 		schema: tool.parameters as z.ZodSchema<Record<string, unknown>>,
 		fn: async (args) => {
 			const result = await tool.execute(args as never);
-			// New tools return FastMCP { content:[{type:"text",text}], isError }.
-			// ADK agents consume a plain value — return the text payload. Note the
-			// `isError` flag is intentionally dropped here: errors are conveyed
-			// in-band within the returned text (each tool serializes its own
-			// {ok:false}/{error} payload), so ADK callers get the string, not
-			// structured error signalling.
+			/*
+			 * New tools return FastMCP { content:[{type:"text",text}], isError }.
+			 * ADK agents consume a plain value — return the text payload. Note the
+			 * `isError` flag is intentionally dropped here: errors are conveyed
+			 * in-band within the returned text (each tool serializes its own
+			 * {ok:false}/{error} payload), so ADK callers get the string, not
+			 * structured error signalling.
+			 */
 			return result?.content?.[0]?.text ?? JSON.stringify(result);
 		},
 	});

@@ -34,8 +34,10 @@ describe("search_docs tool", () => {
 		const { results } = parse(res);
 		const proseHit = results.find((r) => r.kind === "prose");
 		expect(proseHit).toBeDefined();
-		// In default detail, prose entries inline their recipe content so the
-		// agent doesn't have to re-query with detail:"verbose".
+		/*
+		 * In default detail, prose entries inline their recipe content so the
+		 * agent doesn't have to re-query with detail:"verbose".
+		 */
 		expect(typeof proseHit?.content).toBe("string");
 		expect(proseHit?.content).toContain("defillama.yield");
 	});

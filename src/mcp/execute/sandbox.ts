@@ -63,11 +63,13 @@ export async function runInSandbox(
 
 	const logLines: string[] = [];
 	const errLines: string[] = [];
-	// Host-side timers created by the guest `sleep()` helper. We track both the
-	// timer handle and the pending promise's `resolve` so the finally block can,
-	// on disposal (abort/timeout/throw), clear the timer AND settle its promise —
-	// clearing alone would leave the awaiting `sleep()` promise pending forever
-	// (a slow leak per call killed mid-sleep).
+	/*
+	 * Host-side timers created by the guest `sleep()` helper. We track both the
+	 * timer handle and the pending promise's `resolve` so the finally block can,
+	 * on disposal (abort/timeout/throw), clear the timer AND settle its promise —
+	 * clearing alone would leave the awaiting `sleep()` promise pending forever
+	 * (a slow leak per call killed mid-sleep).
+	 */
 	const activeTimers = new Set<{
 		timer: NodeJS.Timeout;
 		resolve: () => void;
@@ -217,8 +219,10 @@ export async function runInSandbox(
 		};
 	} finally {
 		if (timeoutHandle) clearTimeout(timeoutHandle);
-		// Clear pending sleep timers AND settle their promises so a guest killed
-		// mid-sleep doesn't leave an unresolved host-side promise behind.
+		/*
+		 * Clear pending sleep timers AND settle their promises so a guest killed
+		 * mid-sleep doesn't leave an unresolved host-side promise behind.
+		 */
 		for (const { timer, resolve } of activeTimers) {
 			clearTimeout(timer);
 			resolve();

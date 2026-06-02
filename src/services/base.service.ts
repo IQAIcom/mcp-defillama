@@ -34,8 +34,10 @@ export abstract class BaseService {
 		cacheDurationSeconds: number | undefined,
 		options?: RequestOptions,
 	): Promise<T> {
-		// Re-check for TypeScript to narrow env.IQ_GATEWAY_URL/KEY to non-undefined;
-		// the caller (fetchData) has already gated on these being set.
+		/*
+		 * Re-check for TypeScript to narrow env.IQ_GATEWAY_URL/KEY to non-undefined;
+		 * the caller (fetchData) has already gated on these being set.
+		 */
 		if (!env.IQ_GATEWAY_URL || !env.IQ_GATEWAY_KEY) {
 			throw new Error(
 				"IQ_GATEWAY_URL and IQ_GATEWAY_KEY must be configured to use gateway",

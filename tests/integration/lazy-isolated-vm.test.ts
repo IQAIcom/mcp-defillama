@@ -30,8 +30,10 @@ const toolPath = path.resolve(repoRoot, "dist/mcp/execute/tool.js");
 
 describe("lazy isolated-vm", () => {
 	it("execute degrades gracefully (clean {ok:false}) when isolated-vm cannot resolve", () => {
-		// Marker-delimit the JSON so any incidental stdout noise (e.g. the dotenv
-		// startup banner) doesn't corrupt the parse.
+		/*
+		 * Marker-delimit the JSON so any incidental stdout noise (e.g. the dotenv
+		 * startup banner) doesn't corrupt the parse.
+		 */
 		const script = `
 			import { executeTool } from ${JSON.stringify(toolPath)};
 			const res = await executeTool.execute({ code: "async function run(){ return 1; }" });

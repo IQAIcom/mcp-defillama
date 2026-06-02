@@ -102,8 +102,10 @@ describe("resolveChain", () => {
 	});
 
 	it("does not let a short chain name false-positive on a longer input", async () => {
-		// A 3-char name ("TON") must NOT match via the q.includes(name) substring
-		// arm (guarded by name.length >= 4), so "proton" stays unresolved.
+		/*
+		 * A 3-char name ("TON") must NOT match via the q.includes(name) substring
+		 * arm (guarded by name.length >= 4), so "proton" stays unresolved.
+		 */
 		server.use(
 			http.get(CHAINS_URL, () =>
 				HttpResponse.json([
@@ -118,8 +120,10 @@ describe("resolveChain", () => {
 
 	it("does not fuzzy-match 1-2 char queries via substring", async () => {
 		const { resolveChain } = await loadResolver();
-		// "e" would otherwise substring-match "Ethereum"; "so" would match "Solana".
-		// Short queries must resolve via exact/alias only, not the fuzzy fallback.
+		/*
+		 * "e" would otherwise substring-match "Ethereum"; "so" would match "Solana".
+		 * Short queries must resolve via exact/alias only, not the fuzzy fallback.
+		 */
 		expect(await resolveChain("e")).toBeNull();
 		expect(await resolveChain("so")).toBeNull();
 		// A >= 3 char substring still resolves through the fuzzy fallback.
@@ -166,9 +170,11 @@ describe("resolveProtocol", () => {
 	});
 
 	it("resolves via symbol without throwing when name/slug are missing", async () => {
-		// Untrusted live payload: an entry with only a symbol (no slug, no name).
-		// protocolSlug must fall back to the symbol rather than crash on
-		// undefined.toLowerCase().
+		/*
+		 * Untrusted live payload: an entry with only a symbol (no slug, no name).
+		 * protocolSlug must fall back to the symbol rather than crash on
+		 * undefined.toLowerCase().
+		 */
 		server.use(
 			http.get(PROTOCOLS_URL, () =>
 				HttpResponse.json([{ id: "9", symbol: "FOO", tvl: 1 }]),

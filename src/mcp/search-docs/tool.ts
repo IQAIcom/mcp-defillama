@@ -156,9 +156,11 @@ export const searchDocsTool = {
 						params: h.params,
 						exampleCall: h.exampleCall,
 						title: h.title,
-						// Prose entries are short cookbook recipes whose value is the
-						// embedded code; include content here so agents don't have to
-						// re-run the same query with detail:"verbose" just to read one.
+						/*
+						 * Prose entries are short cookbook recipes whose value is the
+						 * embedded code; include content here so agents don't have to
+						 * re-run the same query with detail:"verbose" just to read one.
+						 */
 						content: h.kind === "prose" ? h.content : undefined,
 					},
 		);

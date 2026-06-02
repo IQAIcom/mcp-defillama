@@ -13,8 +13,10 @@
 // dynamic import inside lazyMethod's returned thunk, at dispatch time.
 
 import { z } from "zod";
-// Type-only import — erased at compile time, preserves the
-// "tool-metadata.ts must be side-effect-free at module load" invariant.
+/*
+ * Type-only import — erased at compile time, preserves the
+ * "tool-metadata.ts must be side-effect-free at module load" invariant.
+ */
 import type * as Services from "../../services/index.js";
 import {
 	BatchHistoricalSchema,

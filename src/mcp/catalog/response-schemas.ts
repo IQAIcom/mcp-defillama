@@ -304,9 +304,11 @@ export const StablecoinChainsSchema = z.array(
 	z
 		.object({
 			name: z.string(),
-			// Live /stablecoinchains returns `totalCirculatingUSD: { peggedUSD }`
-			// per chain (verified against the live API); there is no
-			// `totalCirculating` key on this endpoint.
+			/*
+			 * Live /stablecoinchains returns `totalCirculatingUSD: { peggedUSD }`
+			 * per chain (verified against the live API); there is no
+			 * `totalCirculating` key on this endpoint.
+			 */
 			totalCirculatingUSD: z
 				.object({
 					peggedUSD: z.number(),

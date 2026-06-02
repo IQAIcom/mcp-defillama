@@ -128,10 +128,12 @@ async function installServiceCall(
 		scope.controller.signal.addEventListener("abort", onScopeAbort, {
 			once: true,
 		});
-		// Re-check after registering: if the scope aborted between the check above
-		// and addEventListener, the "abort" event already fired and our listener
-		// will never run — abort the child explicitly so the upstream call doesn't
-		// run to completion on a cancelled scope.
+		/*
+		 * Re-check after registering: if the scope aborted between the check above
+		 * and addEventListener, the "abort" event already fired and our listener
+		 * will never run — abort the child explicitly so the upstream call doesn't
+		 * run to completion on a cancelled scope.
+		 */
 		if (scope.controller.signal.aborted) {
 			controller.abort();
 		}

@@ -28,9 +28,11 @@ describe("scope semaphore", () => {
 		});
 		expect(scope.semaphore.queue.length).toBe(1);
 
-		// Release one slot. This hands the permit to the queued waiter. The race
-		// we're guarding against: a fast-path acquireSlot slipping in before the
-		// waiter resumes and pushing current past max.
+		/*
+		 * Release one slot. This hands the permit to the queued waiter. The race
+		 * we're guarding against: a fast-path acquireSlot slipping in before the
+		 * waiter resumes and pushing current past max.
+		 */
 		releaseSlot(scope);
 
 		let fourthResumed = false;
@@ -71,8 +73,10 @@ describe("scope semaphore", () => {
 		await flush();
 		await Promise.all(waiters);
 
-		// Every acquirer (2 holders + 2 drained waiters) now releases; current
-		// must land exactly at 0, never negative.
+		/*
+		 * Every acquirer (2 holders + 2 drained waiters) now releases; current
+		 * must land exactly at 0, never negative.
+		 */
 		releaseSlot(scope); // drained waiter
 		releaseSlot(scope); // drained waiter
 		releaseSlot(scope); // original holder

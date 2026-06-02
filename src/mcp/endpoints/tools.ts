@@ -9,11 +9,13 @@ import { JQ } from "jqts";
 import { z } from "zod";
 import { TOOL_METADATA } from "../catalog/tool-metadata.js";
 
-// Same dual-timeout policy as execute/client.ts: 5s outer AbortController
-// races a 6s axios timeout so a stalled upstream surfaces as the canonical
-// "DefiLlama call timed out after 5s" message instead of hanging the tool call.
-// DEFILLAMA_MCP_INVOKE_ABORT_MS is a test-only knob (mirrors the sandbox deadline
-// override pattern); production uses the hard-coded 5s.
+/*
+ * Same dual-timeout policy as execute/client.ts: 5s outer AbortController
+ * races a 6s axios timeout so a stalled upstream surfaces as the canonical
+ * "DefiLlama call timed out after 5s" message instead of hanging the tool call.
+ * DEFILLAMA_MCP_INVOKE_ABORT_MS is a test-only knob (mirrors the sandbox deadline
+ * override pattern); production uses the hard-coded 5s.
+ */
 const INVOKE_ABORT_MS =
 	Number(process.env.DEFILLAMA_MCP_INVOKE_ABORT_MS) || 5_000;
 const INVOKE_AXIOS_MS = 6_000;

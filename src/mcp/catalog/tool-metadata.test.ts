@@ -33,8 +33,10 @@ describe("tool-metadata in-process checks", () => {
 		for (const m of TOOL_METADATA) {
 			const fn = await m.sandboxImpl();
 			expect(typeof fn).toBe("function");
-			// lazyMethod returns fn.bind(svc); a bound function's name is "bound <name>".
-			// This proves the binding step ran (an unbound reference would not match).
+			/*
+			 * lazyMethod returns fn.bind(svc); a bound function's name is "bound <name>".
+			 * This proves the binding step ran (an unbound reference would not match).
+			 */
 			expect(fn.name).toMatch(/^bound /);
 		}
 	});

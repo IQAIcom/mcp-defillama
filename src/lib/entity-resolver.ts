@@ -75,8 +75,10 @@ async function getChainCatalog(): Promise<ChainResolved[]> {
 export async function resolveChain(
 	input: string,
 ): Promise<ChainResolved | null> {
-	// Defensive: these resolvers are also invoked from the untyped sandbox bridge
-	// (Phase 5) and the defillama_resolve tool, so a non-string can arrive at runtime.
+	/*
+	 * Defensive: these resolvers are also invoked from the untyped sandbox bridge
+	 * (Phase 5) and the defillama_resolve tool, so a non-string can arrive at runtime.
+	 */
 	if (typeof input !== "string") return null;
 	const q = input.trim().toLowerCase();
 	if (!q) return null;
@@ -95,15 +97,17 @@ export async function resolveChain(
 		);
 	}
 
-	// Substring match, either direction — both arms length-guarded so the fuzzy
-	// fallback can't produce arbitrary matches:
-	//  - `name.includes(q)` only fires for queries of >= 3 chars, so a 1-2 char
-	//    query ("e", "ar") doesn't match the first chain that happens to contain
-	//    it ("Ethereum", "Arbitrum"). Short canonical names resolve via the exact
-	//    or alias steps above.
-	//  - `q.includes(name)` only fires for chain names of >= 4 chars, so short
-	//    names (Base, Sei, TON, Op, BNB) don't false-positive on unrelated inputs
-	//    like "base58" -> Base or "tronlink" -> Tron.
+	/*
+	 * Substring match, either direction — both arms length-guarded so the fuzzy
+	 * fallback can't produce arbitrary matches:
+	 *  - `name.includes(q)` only fires for queries of >= 3 chars, so a 1-2 char
+	 *    query ("e", "ar") doesn't match the first chain that happens to contain
+	 *    it ("Ethereum", "Arbitrum"). Short canonical names resolve via the exact
+	 *    or alias steps above.
+	 *  - `q.includes(name)` only fires for chain names of >= 4 chars, so short
+	 *    names (Base, Sei, TON, Op, BNB) don't false-positive on unrelated inputs
+	 *    like "base58" -> Base or "tronlink" -> Tron.
+	 */
 	const MIN_QUERY_SUBSTRING_LEN = 3;
 	const partial = rows.find((r) => {
 		const name = r.name.toLowerCase();
@@ -143,11 +147,13 @@ async function getProtocolCatalog(): Promise<ProtocolData[]> {
 }
 
 function protocolSlug(p: ProtocolData): string {
-	// `p` comes from the untrusted live /protocols payload, so guard every field.
-	// Prefer the real slug; else slugify the name; else fall back to the symbol.
-	// A matched protocol always has at least one of these as a non-empty string
-	// (the matcher only matches on slug/name/symbol === query), so this never
-	// returns "" for a real match — and never throws on a missing/non-string field.
+	/*
+	 * `p` comes from the untrusted live /protocols payload, so guard every field.
+	 * Prefer the real slug; else slugify the name; else fall back to the symbol.
+	 * A matched protocol always has at least one of these as a non-empty string
+	 * (the matcher only matches on slug/name/symbol === query), so this never
+	 * returns "" for a real match — and never throws on a missing/non-string field.
+	 */
 	if (typeof p.slug === "string" && p.slug) return p.slug;
 	if (typeof p.name === "string" && p.name) {
 		return p.name.toLowerCase().replace(/\s+/g, "-");

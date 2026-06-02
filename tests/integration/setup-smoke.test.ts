@@ -26,8 +26,10 @@ afterEach(() => {
 /** Spawn the server, handshake, list tools, return the sorted tool names. */
 function listTools(extraEnv: Record<string, string>): Promise<string[]> {
 	return new Promise<string[]>((resolve, reject) => {
-		// Build a clean env that does NOT inherit DEFILLAMA_MCP_TOOLS from the
-		// caller, then layer the explicit overrides on top.
+		/*
+		 * Build a clean env that does NOT inherit DEFILLAMA_MCP_TOOLS from the
+		 * caller, then layer the explicit overrides on top.
+		 */
 		const env = { ...process.env, ...extraEnv } as NodeJS.ProcessEnv;
 		if (!("DEFILLAMA_MCP_TOOLS" in extraEnv)) delete env.DEFILLAMA_MCP_TOOLS;
 
@@ -42,8 +44,10 @@ function listTools(extraEnv: Record<string, string>): Promise<string[]> {
 			stderr += d.toString();
 		});
 		proc.on("error", reject);
-		// Fail fast (with stderr) if the server exits before we get a tools/list
-		// reply — otherwise a broken build would hang for the full 20s timeout.
+		/*
+		 * Fail fast (with stderr) if the server exits before we get a tools/list
+		 * reply — otherwise a broken build would hang for the full 20s timeout.
+		 */
 		proc.on("close", (code) => {
 			if (code !== null && code !== 0) {
 				reject(
