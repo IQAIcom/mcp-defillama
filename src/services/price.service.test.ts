@@ -62,12 +62,10 @@ describe("PriceService *Raw methods", () => {
 		server.use(
 			http.get("https://coins.llama.fi/batchHistorical", ({ request }) => {
 				const url = new URL(request.url);
-				// The service encodeURIComponent()s the JSON before placing it in the
-				// query param; URLSearchParams.get() decodes one layer, leaving that
-				// encoded form.
-				expect(url.searchParams.get("coins")).toBe(
-					encodeURIComponent(JSON.stringify(coinsObj)),
-				);
+				// The service passes raw JSON to URLSearchParams (single-encoded on
+				// the wire); URLSearchParams.get() decodes that one layer, so we get
+				// the plain JSON back — proving there's no double-encoding.
+				expect(url.searchParams.get("coins")).toBe(JSON.stringify(coinsObj));
 				return HttpResponse.json(payload);
 			}),
 		);

@@ -86,10 +86,14 @@ export class PriceService extends BaseService {
 		options?: RequestOptions,
 	): Promise<BatchHistoricalResponse> {
 		try {
+			// Pass raw JSON (string form as-is); URLSearchParams encodes the value
+			// exactly once. Pre-encoding with encodeURIComponent here would
+			// double-encode (URLSearchParams encodes again), and DefiLlama would
+			// then fail to JSON-parse the coins param.
 			const coinsParam =
 				typeof args.coins === "string"
 					? args.coins
-					: encodeURIComponent(JSON.stringify(args.coins));
+					: JSON.stringify(args.coins);
 
 			const params = new URLSearchParams({ coins: coinsParam });
 
