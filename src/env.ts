@@ -10,8 +10,6 @@ const envSchema = z.object({
 	DEFILLAMA_API_KEY: z.string().min(1).optional(),
 
 	// LLM configuration (optional)
-	OPENROUTER_API_KEY: z.string().min(1).optional(),
-	LLM_MODEL: z.string().default("openai/gpt-4.1-mini"),
 	GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
 });
 

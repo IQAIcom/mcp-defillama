@@ -29,35 +29,19 @@ const optionalSearchWidthArg = () =>
 	z.union([z.string().min(1), z.number().positive()]).optional();
 
 /**
- * Helper to set query on all services when _userQuery is provided in args
- * This is called from MCP tool execute functions to enable context-aware filtering
+ * Numeric sort helper that mirrors the legacy service projection: missing /
+ * non-numeric values are treated as 0, then sorted asc/desc.
  */
-function setQueryFromArgs(args: Record<string, unknown>) {
-	const query = args._userQuery as string | undefined;
-	if (query) {
-		blockchainService.setQuery(query);
-		dexService.setQuery(query);
-		feesService.setQuery(query);
-		optionsService.setQuery(query);
-		priceService.setQuery(query);
-		protocolService.setQuery(query);
-		stablecoinService.setQuery(query);
-		yieldService.setQuery(query);
-	}
-}
-
-/**
- * Helper to extract user query from context.userContent
- * The userContent contains the original user message that started the invocation
- */
-function extractQueryFromContext(context?: {
-	userContent?: { parts?: Array<{ text?: string }> };
-}): string | null {
-	if (!context?.userContent?.parts) return null;
-
-	// Extract text from the first part (which contains the user's query)
-	const firstPart = context.userContent.parts[0];
-	return firstPart?.text || null;
+function sortByNumericField<T>(
+	items: T[],
+	field: string,
+	order: "asc" | "desc",
+): T[] {
+	return [...items].sort((a, b) => {
+		const aVal = (a[field as keyof T] as number) || 0;
+		const bVal = (b[field as keyof T] as number) || 0;
+		return order === "asc" ? aVal - bVal : bVal - aVal;
+	});
 }
 
 /**
@@ -157,11 +141,15 @@ export const defillamaTools = [
 				.describe(
 					"Sort order by TVL. Use 'desc' (default) for highest TVL first (e.g., Ethereum, BSC, Tron), or 'asc' for lowest TVL first",
 				),
-			_userQuery: z.string().optional(),
 		}),
-		execute: async (args: { order: "asc" | "desc"; _userQuery?: string }) => {
-			setQueryFromArgs(args);
-			return await protocolService.getChains(args);
+		execute: async (args: { order: "asc" | "desc" }) => {
+			const data = await protocolService.getChainsRaw();
+			const sorted = sortByNumericField(data, "tvl", args.order);
+			const top20 = sorted.slice(0, 20).map((chain) => ({
+				name: chain.name,
+				tvl: chain.tvl,
+			}));
+			return JSON.stringify(top20);
 		},
 	},
 
@@ -186,17 +174,48 @@ export const defillamaTools = [
 				.enum(["asc", "desc"])
 				.default("desc")
 				.describe("Sort order. Only used when protocol parameter is omitted."),
-			_userQuery: z.string().optional(),
 		}),
 		execute: async (args: {
 			protocol?: string;
 			sortCondition: "change_1h" | "change_1d" | "change_7d" | "tvl";
 			order: "asc" | "desc";
-			_userQuery?: string;
 		}) => {
 			await autoResolveEntities(args);
-			setQueryFromArgs(args);
-			return await protocolService.getProtocolData(args);
+
+			if (args.protocol) {
+				const data = await protocolService.getProtocolRaw({
+					protocol: args.protocol,
+				});
+				const essentialData = {
+					id: data.id,
+					name: data.name,
+					symbol: data.symbol,
+					category: data.category,
+					chains: data.chains,
+					tvl: data.tvl,
+					chainTvls: data.chainTvls,
+					change_1h: data.change_1h,
+					change_1d: data.change_1d,
+					change_7d: data.change_7d,
+					currentChainTvls: data.currentChainTvls,
+					mcap: data.mcap,
+				};
+				return JSON.stringify(essentialData);
+			}
+
+			const data = await protocolService.getProtocolsRaw();
+			const sorted = sortByNumericField(data, args.sortCondition, args.order);
+			const top10 = sorted.slice(0, 10).map((protocol) => ({
+				name: protocol.name,
+				symbol: protocol.symbol,
+				tvl: protocol.tvl,
+				chainTvls: protocol.chainTvls,
+				change_1h: protocol.change_1h,
+				change_1d: protocol.change_1d,
+				change_7d: protocol.change_7d,
+				currentChainTvls: protocol.currentChainTvls,
+			}));
+			return JSON.stringify(top10);
 		},
 	},
 
@@ -211,12 +230,15 @@ export const defillamaTools = [
 				.describe(
 					"Blockchain name - auto-resolved (e.g., 'Ethereum', 'Arbitrum', 'Polygon', 'BSC', 'Avalanche'). Common variations are handled automatically. If omitted, returns aggregated historical TVL across all chains combined",
 				),
-			_userQuery: z.string().optional(),
 		}),
-		execute: async (args: { chain?: string; _userQuery?: string }) => {
+		execute: async (args: { chain?: string }) => {
 			await autoResolveEntities(args);
-			setQueryFromArgs(args);
-			return await protocolService.getHistoricalChainTvl(args);
+			const data = await protocolService.getHistoricalChainTvlRaw(args);
+			const last10 = data.slice(-10).map((item) => ({
+				date: item.date,
+				tvl: item.tvl,
+			}));
+			return JSON.stringify(last10);
 		},
 	},
 
@@ -261,7 +283,6 @@ export const defillamaTools = [
 				.enum(["asc", "desc"])
 				.default("desc")
 				.describe("Sort order (ascending or descending)"),
-			_userQuery: z.string().optional(),
 		}),
 		execute: async (args: {
 			excludeTotalDataChart: boolean;
@@ -278,8 +299,43 @@ export const defillamaTools = [
 			order: "asc" | "desc";
 		}) => {
 			await autoResolveEntities(args);
-			setQueryFromArgs(args);
-			return await dexService.getDexsData(args);
+
+			if (args.protocol) {
+				const data = await dexService.getDexSummaryRaw({
+					protocol: args.protocol,
+					excludeTotalDataChart: args.excludeTotalDataChart,
+					excludeTotalDataChartBreakdown: args.excludeTotalDataChartBreakdown,
+				});
+				return JSON.stringify(data);
+			}
+
+			const data = await dexService.getDexsOverviewRaw({
+				chain: args.chain,
+				excludeTotalDataChart: args.excludeTotalDataChart,
+				excludeTotalDataChartBreakdown: args.excludeTotalDataChartBreakdown,
+			});
+
+			if (data.protocols) {
+				const sorted = sortByNumericField(
+					data.protocols,
+					args.sortCondition,
+					args.order,
+				);
+				const top10 = sorted.slice(0, 10).map((protocol) => ({
+					displayName: protocol.displayName,
+					breakdown24h: protocol.breakdown24h,
+					dailyVolume: protocol.dailyVolume,
+					total24h: protocol.total24h,
+					total7d: protocol.total7d,
+					total30d: protocol.total30d,
+					change_1d: protocol.change_1d,
+					change_7d: protocol.change_7d,
+					change_1m: protocol.change_1m,
+				}));
+				return JSON.stringify(top10);
+			}
+
+			return JSON.stringify(data);
 		},
 	},
 
@@ -329,7 +385,6 @@ export const defillamaTools = [
 				.default("total24h")
 				.describe("Field to sort results by"),
 			order: z.enum(["asc", "desc"]).default("desc").describe("Sort order"),
-			_userQuery: z.string().optional(),
 		}),
 		execute: async (args: {
 			excludeTotalDataChart: boolean;
@@ -341,8 +396,44 @@ export const defillamaTools = [
 			order: "asc" | "desc";
 		}) => {
 			await autoResolveEntities(args);
-			setQueryFromArgs(args);
-			return await feesService.getFeesAndRevenue(args);
+
+			if (args.protocol) {
+				const data = await feesService.getFeesSummaryRaw({
+					protocol: args.protocol,
+					dataType: args.dataType,
+					excludeTotalDataChart: args.excludeTotalDataChart,
+					excludeTotalDataChartBreakdown: args.excludeTotalDataChartBreakdown,
+				});
+				return JSON.stringify(data);
+			}
+
+			const data = await feesService.getFeesOverviewRaw({
+				chain: args.chain,
+				dataType: args.dataType,
+				excludeTotalDataChart: args.excludeTotalDataChart,
+				excludeTotalDataChartBreakdown: args.excludeTotalDataChartBreakdown,
+			});
+
+			if (data.protocols) {
+				const sorted = sortByNumericField(
+					data.protocols,
+					args.sortCondition,
+					args.order,
+				);
+				const top10 = sorted.slice(0, 10).map((protocol) => ({
+					name: protocol.name,
+					change_1d: protocol.change_1d,
+					change_7d: protocol.change_7d,
+					change_1m: protocol.change_1m,
+					dailyUserFees: protocol.dailyUserFees,
+					dailyHoldersRevenue: protocol.dailyHoldersRevenue,
+					dailySupplySideRevenue: protocol.dailySupplySideRevenue,
+					holdersRevenue30d: protocol.holdersRevenue30d,
+				}));
+				return JSON.stringify(top10);
+			}
+
+			return JSON.stringify(data);
 		},
 	},
 
@@ -356,11 +447,23 @@ export const defillamaTools = [
 				.boolean()
 				.optional()
 				.describe("Whether to include price data"),
-			_userQuery: z.string().optional(),
 		}),
-		execute: async (args: { includePrices?: boolean; _userQuery?: string }) => {
-			setQueryFromArgs(args);
-			return await stablecoinService.getStableCoin(args);
+		execute: async (args: { includePrices?: boolean }) => {
+			const data = await stablecoinService.getStablecoinsRaw(args);
+			const sorted = [...data.peggedAssets].sort(
+				(a, b) => b.circulating.peggedUSD - a.circulating.peggedUSD,
+			);
+			const top20 = sorted.slice(0, 20).map((coin) => ({
+				id: coin.id,
+				name: coin.name,
+				symbol: coin.symbol,
+				circulating: coin.circulating,
+				circulatingPrevDay: coin.circulatingPrevDay,
+				circulatingPrevWeek: coin.circulatingPrevWeek,
+				circulatingPrevMonth: coin.circulatingPrevMonth,
+				price: coin.price,
+			}));
+			return JSON.stringify(top20);
 		},
 	},
 
@@ -368,12 +471,14 @@ export const defillamaTools = [
 		name: "defillama_get_stablecoin_chains",
 		description:
 			"Fetches stablecoin data by chains. Returns last 3 chains with market cap data",
-		parameters: z.object({
-			_userQuery: z.string().optional(),
-		}),
-		execute: async (args: Record<string, unknown>) => {
-			setQueryFromArgs(args);
-			return await stablecoinService.getStableCoinChains();
+		parameters: z.object({}),
+		execute: async () => {
+			const data = await stablecoinService.getStablecoinChainsRaw();
+			const last3 = data.slice(-3).map((item) => ({
+				chainName: item.name,
+				mcapsum: item.totalCirculating.peggedUSD,
+			}));
+			return JSON.stringify(last3);
 		},
 	},
 
@@ -394,16 +499,19 @@ export const defillamaTools = [
 				.describe(
 					"Blockchain name to filter stablecoin data by (e.g., 'Ethereum', 'Polygon', 'Arbitrum'). Returns stablecoin market cap data for that specific chain. **If the user mentions a blockchain but you're unsure of the exact name format, call defillama_get_chains first to discover valid chain names**. If omitted, returns global aggregated data across all chains",
 				),
-			_userQuery: z.string().optional(),
 		}),
-		execute: async (args: {
-			chain?: string;
-			stablecoin?: number | string;
-			_userQuery?: string;
-		}) => {
+		execute: async (args: { chain?: string; stablecoin?: number | string }) => {
 			await autoResolveEntities(args);
-			setQueryFromArgs(args);
-			return await stablecoinService.getStableCoinCharts(args);
+			const data = await stablecoinService.getStablecoinChartsRaw(args);
+			const last10 = data.slice(-10).map((item) => ({
+				date: item.date,
+				totalCirculatingPeggedUSD: item.totalCirculating.peggedUSD,
+				totalUnreleased: item.totalUnreleased,
+				totalCirculatingUSD: item.totalCirculatingUSD,
+				totalMintedUSD: item.totalMintedUSD,
+				totalBridgedToUSD: item.totalBridgedToUSD,
+			}));
+			return JSON.stringify(last10);
 		},
 	},
 
@@ -411,12 +519,14 @@ export const defillamaTools = [
 		name: "defillama_get_stablecoin_prices",
 		description:
 			"Fetches historical stablecoin price data. Returns last 3 data points",
-		parameters: z.object({
-			_userQuery: z.string().optional(),
-		}),
-		execute: async (args: Record<string, unknown>) => {
-			setQueryFromArgs(args);
-			return await stablecoinService.getStableCoinPrices();
+		parameters: z.object({}),
+		execute: async () => {
+			const data = await stablecoinService.getStablecoinPricesRaw();
+			const last3 = data.slice(-3).map((item) => ({
+				date: item.date,
+				prices: item.prices,
+			}));
+			return JSON.stringify(last3);
 		},
 	},
 
@@ -437,15 +547,10 @@ export const defillamaTools = [
 				.describe(
 					"Time window to search for price data. Accepts duration strings (e.g., '4h', '1d', '30m') or seconds as a number (e.g., 600 for 10 minutes). Defaults to 4 hours. Use larger values if recent price data might not be available",
 				),
-			_userQuery: z.string().optional(),
 		}),
-		execute: async (args: {
-			coins: string;
-			searchWidth: string | number;
-			_userQuery?: string;
-		}) => {
-			setQueryFromArgs(args);
-			return await priceService.getPricesCurrentCoins(args);
+		execute: async (args: { coins: string; searchWidth: string | number }) => {
+			const data = await priceService.getCurrentPricesRaw(args);
+			return JSON.stringify(data);
 		},
 	},
 
@@ -459,11 +564,10 @@ export const defillamaTools = [
 				.describe(
 					"Comma-separated list of tokens in the format '{chain}:{tokenAddress}'. Each token must specify its blockchain and contract address. Examples: 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7' (USDT), 'bsc:0x55d398326f99059ff775485246999027b3197955' (USDT on BSC), or multiple tokens: 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7,ethereum:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'. Chain names must match exactly - if unsure about the correct chain name format, call defillama_get_chains first to discover valid chain names (e.g., 'ethereum' not 'Ethereum', 'bsc' not 'BSC'). Token addresses are checksummed contract addresses on the specified chain",
 				),
-			_userQuery: z.string().optional(),
 		}),
-		execute: async (args: { coins: string; _userQuery?: string }) => {
-			setQueryFromArgs(args);
-			return await priceService.getPricesFirstCoins(args);
+		execute: async (args: { coins: string }) => {
+			const data = await priceService.getFirstPricesRaw(args);
+			return JSON.stringify(data);
 		},
 	},
 
@@ -493,21 +597,13 @@ export const defillamaTools = [
 				.describe(
 					"Time range around each timestamp to search for price data. Accepts duration strings (e.g., '4h', '1d', '30m') or seconds as a number (e.g., 600 for 10 minutes). Defaults to '6h' (6 hours). Wider ranges increase chances of finding data but may be less precise",
 				),
-			_userQuery: z.string().optional(),
 		}),
 		execute: async (args: {
 			coins: string | Record<string, Array<number | string>>;
 			searchWidth?: string | number;
-			_userQuery?: string;
 		}) => {
-			setQueryFromArgs(args);
-			return await priceService.getBatchHistorical({
-				coins:
-					typeof args.coins === "string"
-						? args.coins
-						: encodeURIComponent(JSON.stringify(args.coins)),
-				searchWidth: args.searchWidth,
-			});
+			const data = await priceService.getBatchHistoricalRaw(args);
+			return JSON.stringify(data);
 		},
 	},
 
@@ -529,16 +625,14 @@ export const defillamaTools = [
 				.describe(
 					"Time window to search for price data around the timestamp if exact data unavailable. Accepts duration string (e.g., '4h', '1d') or seconds (e.g., 600). Defaults to 6 hours. Larger windows increase chances of finding data but may be less accurate",
 				),
-			_userQuery: z.string().optional(),
 		}),
 		execute: async (args: {
 			coins: string;
 			timestamp: number | string;
 			searchWidth: string | number;
-			_userQuery?: string;
 		}) => {
-			setQueryFromArgs(args);
-			return await priceService.getHistoricalPricesByContractAddress(args);
+			const data = await priceService.getHistoricalPricesRaw(args);
+			return JSON.stringify(data);
 		},
 	},
 
@@ -569,17 +663,15 @@ export const defillamaTools = [
 				.describe(
 					"Direction to calculate change. If false (default), calculates change from [timestamp - period] to [timestamp] (looking backward). If true, calculates change from [timestamp] to [timestamp + period] (looking forward). Use true for historical predictions/projections",
 				),
-			_userQuery: z.string().optional(),
 		}),
 		execute: async (args: {
 			coins: string;
 			timestamp?: string | number;
 			period: string;
 			lookForward: boolean;
-			_userQuery?: string;
 		}) => {
-			setQueryFromArgs(args);
-			return await priceService.getPercentageCoins(args);
+			const data = await priceService.getPercentageChangeRaw(args);
+			return JSON.stringify(data);
 		},
 	},
 
@@ -622,20 +714,17 @@ export const defillamaTools = [
 				.describe(
 					"Time window for finding price data around each period point. Can be specified as seconds (number) or duration string. Wider search windows are more forgiving but may be less precise. Examples: '600' (10 minutes), '6h' (6 hours). Defaults to 6 hours",
 				),
-
-			_userQuery: z.string().optional(),
 		}),
 		execute: async (args: {
 			coins: string;
-			start?: number;
-			end?: number;
+			start?: number | string;
+			end?: number | string;
 			span?: number;
 			period?: string;
 			searchWidth: string | number;
-			_userQuery?: string;
 		}) => {
-			setQueryFromArgs(args);
-			return await priceService.getChartCoins(args);
+			const data = await priceService.getPriceChartRaw(args);
+			return JSON.stringify(data);
 		},
 	},
 
@@ -671,7 +760,6 @@ export const defillamaTools = [
 				.max(100)
 				.default(10)
 				.describe("Number of pools to return (between 1-100)"),
-			_userQuery: z.string().optional(),
 		}),
 		execute: async (args: {
 			sortCondition:
@@ -685,10 +773,24 @@ export const defillamaTools = [
 				| "apyMean30d";
 			order: "asc" | "desc";
 			limit: number;
-			_userQuery?: string;
 		}) => {
-			setQueryFromArgs(args);
-			return await yieldService.getLatestPoolData(args);
+			const data = await yieldService.getLatestPoolsRaw();
+			const sorted = sortByNumericField(
+				data.data,
+				args.sortCondition,
+				args.order,
+			);
+			const limited = sorted.slice(0, args.limit).map((pool) => ({
+				chain: pool.chain,
+				project: pool.project,
+				tvlUsd: pool.tvlUsd,
+				apyPct1D: pool.apyPct1D,
+				apyPct7D: pool.apyPct7D,
+				apyPct30D: pool.apyPct30D,
+				apy: pool.apy,
+				predictions: pool.predictions,
+			}));
+			return JSON.stringify(limited);
 		},
 	},
 
@@ -702,11 +804,16 @@ export const defillamaTools = [
 				.describe(
 					"Unique pool identifier (UUID format). **IMPORTANT: Always call defillama_get_latest_pool_data first** to discover available pools and their IDs. The pool ID is returned in the 'pool' property of each result (e.g., '742c4e8f-1f3d-4c3e-9c1e-2a3b4c5d6e7f')",
 				),
-			_userQuery: z.string().optional(),
 		}),
-		execute: async (args: { pool: string; _userQuery?: string }) => {
-			setQueryFromArgs(args);
-			return await yieldService.getHistoricalPoolData(args);
+		execute: async (args: { pool: string }) => {
+			const data = await yieldService.getHistoricalPoolDataRaw(args);
+			const last10 = data.data.slice(-10).map((item) => ({
+				timestamp: item.timestamp,
+				tvlUsd: item.tvlUsd,
+				apy: item.apy,
+				apyBase: item.apyBase,
+			}));
+			return JSON.stringify(last10);
 		},
 	},
 
@@ -757,7 +864,6 @@ export const defillamaTools = [
 				.boolean()
 				.default(true)
 				.describe("Whether to exclude broken down chart data from response"),
-			_userQuery: z.string().optional(),
 		}),
 		execute: async (args: {
 			dataType: "dailyPremiumVolume" | "dailyNotionalVolume";
@@ -773,11 +879,35 @@ export const defillamaTools = [
 			order: "asc" | "desc";
 			excludeTotalDataChart: boolean;
 			excludeTotalDataChartBreakdown: boolean;
-			_userQuery?: string;
 		}) => {
 			await autoResolveEntities(args);
-			setQueryFromArgs(args);
-			return await optionsService.getOptionsData(args);
+
+			if (args.protocol) {
+				const data = await optionsService.getOptionsSummaryRaw({
+					protocol: args.protocol,
+					dataType: args.dataType,
+				});
+				return JSON.stringify(data);
+			}
+
+			const data = await optionsService.getOptionsOverviewRaw({
+				chain: args.chain,
+				dataType: args.dataType,
+				excludeTotalDataChart: args.excludeTotalDataChart,
+				excludeTotalDataChartBreakdown: args.excludeTotalDataChartBreakdown,
+			});
+
+			if (data.protocols) {
+				const sorted = sortByNumericField(
+					data.protocols,
+					args.sortCondition,
+					args.order,
+				);
+				const top10 = sorted.slice(0, 10);
+				return JSON.stringify(top10);
+			}
+
+			return JSON.stringify(data);
 		},
 	},
 
@@ -795,16 +925,11 @@ export const defillamaTools = [
 			timestamp: unixTimestampArg().describe(
 				"Time to query block data for. Accepts both Unix timestamp in seconds (e.g., 1640000000) or ISO 8601 date string (e.g., '2024-01-15T10:30:00Z', '2024-01-15'). Relative dates work too - the converter will handle them. Will be automatically converted to Unix timestamp for the API call",
 			),
-			_userQuery: z.string().optional(),
 		}),
-		execute: async (args: {
-			chain: string;
-			timestamp: number | string;
-			_userQuery?: string;
-		}) => {
+		execute: async (args: { chain: string; timestamp: number | string }) => {
 			await autoResolveEntities(args);
-			setQueryFromArgs(args);
-			return await blockchainService.getBlockChainTimestamp(args);
+			const data = await blockchainService.getBlockAtTimestampRaw(args);
+			return JSON.stringify(data);
 		},
 	},
 ] as const;
@@ -819,25 +944,7 @@ export const getDefillamaTools = (): BaseTool[] => {
 			name: tool.name,
 			description: tool.description,
 			schema: tool.parameters as z.ZodSchema<Record<string, unknown>>,
-			fn: async (args, context) => {
-				// Extract and inject user query from context.userContent into all services
-				const query = extractQueryFromContext(context);
-				logger.info(
-					`Extracted user query from context: ${query ? `${query.substring(0, 100)}...` : "none"}`,
-				);
-				if (query) {
-					logger.info(
-						`Setting user query for filtering: ${query.substring(0, 100)}...`,
-					);
-					blockchainService.setQuery(query);
-					dexService.setQuery(query);
-					feesService.setQuery(query);
-					optionsService.setQuery(query);
-					priceService.setQuery(query);
-					protocolService.setQuery(query);
-					stablecoinService.setQuery(query);
-					yieldService.setQuery(query);
-				}
+			fn: async (args) => {
 				return await tool.execute(args as never);
 			},
 		}),
