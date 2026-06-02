@@ -207,7 +207,7 @@ export type StablecoinsResponse = {
  */
 export type StablecoinChainItem = {
 	name: string;
-	totalCirculating: {
+	totalCirculatingUSD: {
 		peggedUSD: number;
 	};
 };

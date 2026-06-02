@@ -439,7 +439,7 @@ export const defillamaTools = [
 			const data = await stablecoinService.getStablecoinChainsRaw();
 			const last3 = data.slice(-3).map((item) => ({
 				chainName: item.name,
-				mcapsum: item.totalCirculating.peggedUSD,
+				mcapsum: item.totalCirculatingUSD.peggedUSD,
 			}));
 			return JSON.stringify(last3);
 		},

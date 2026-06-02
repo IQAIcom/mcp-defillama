@@ -41,8 +41,8 @@ describe("StablecoinService *Raw methods", () => {
 
 	it("getStablecoinChainsRaw returns the full /stablecoinchains payload", async () => {
 		const payload = [
-			{ name: "Ethereum", totalCirculating: { peggedUSD: 10 } },
-			{ name: "Tron", totalCirculating: { peggedUSD: 20 } },
+			{ name: "Ethereum", totalCirculatingUSD: { peggedUSD: 10 } },
+			{ name: "Tron", totalCirculatingUSD: { peggedUSD: 20 } },
 		];
 		server.use(
 			http.get("https://stablecoins.llama.fi/stablecoinchains", () =>

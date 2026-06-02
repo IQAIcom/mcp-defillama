@@ -356,8 +356,8 @@ describe("StablecoinsSchema", () => {
 
 describe("StablecoinChainsSchema", () => {
 	const payload = [
-		{ name: "Ethereum", totalCirculating: { peggedUSD: 60_000_000_000 } },
-		{ name: "Tron", totalCirculating: { peggedUSD: 45_000_000_000 } },
+		{ name: "Ethereum", totalCirculatingUSD: { peggedUSD: 60_000_000_000 } },
+		{ name: "Tron", totalCirculatingUSD: { peggedUSD: 45_000_000_000 } },
 	];
 
 	it("parses a representative full payload", () => {
@@ -370,7 +370,7 @@ describe("StablecoinChainsSchema", () => {
 		const withExtra = [
 			{
 				name: "Ethereum",
-				totalCirculating: { peggedUSD: 1 },
+				totalCirculatingUSD: { peggedUSD: 1 },
 				domainNew: "test",
 			},
 		];
