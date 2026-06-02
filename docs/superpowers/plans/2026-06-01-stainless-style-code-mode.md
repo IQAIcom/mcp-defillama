@@ -108,13 +108,13 @@ Single source of truth for Phases 1 (methods) and 2 (catalog). `host` column: `a
 > integration harness — don't create it here (it would leave this task's commit
 > with an unreferenced file).
 
-- [ ] **Step 1: Add deps and scripts.** In `package.json`:
+- [ ] **Step 1: Add deps and scripts (ADD only — no removals here).** In `package.json`:
   - devDeps: `vitest`, `@vitest/coverage-v8`, `msw`, `cross-env`.
   - scripts: `"pretest": "tsc"`, `"test": "cross-env NODE_OPTIONS=--no-node-snapshot vitest run"`, `"test:watch": "cross-env NODE_OPTIONS=--no-node-snapshot vitest"`.
-  - Remove deps `@openrouter/ai-sdk-provider` and `js-tiktoken`. (Keep `@ai-sdk/google`, `@google/generative-ai`, `ai`, `dedent` for now.)
+  - **Do NOT remove `@openrouter/ai-sdk-provider` / `js-tiktoken` here (finding).** Their imports still exist in `base.service.ts` and `services/index.ts`; removing them now would leave this standalone commit with broken imports / a failing `pnpm build`. The removal happens in **Task 1.4 Step 3** (after the importing files are deleted/rewritten) and is committed in the 1.5 unit.
 
   Run: `pnpm install`
-  Expected: lockfile updates, no peer errors.
+  Expected: lockfile updates (additions only), no peer errors.
 
 - [ ] **Step 2: Add `vitest.config.ts`.**
 
@@ -130,11 +130,11 @@ export default defineConfig({
 ```
 
 - [ ] **Step 3: Verify the runner boots.** Run: `pnpm vitest run --reporter=basic` → Expected: "No test files found" (exit 0) — confirms vitest resolves.
-- [ ] **Step 4: Commit.**
+- [ ] **Step 4: Commit (additive, stays green).**
 
 ```bash
 git add package.json pnpm-lock.yaml vitest.config.ts
-git commit -m "chore: add vitest/msw test tooling; drop filter-only deps"
+git commit -m "chore: add vitest/msw test tooling"
 ```
 
 ### Task 1.2 — `RequestOptions` + base service rewrite
@@ -365,9 +365,9 @@ it("getLatestPoolsRaw returns the full pools payload (no slice/sort)", async () 
 
 - [ ] **Step 1: `services/index.ts`** — remove the `openrouter` import and the `setAIModel(...)` broadcast block (lines ~6, ~38-47). Keep the eight singleton exports. Module is now side-effect-free.
 - [ ] **Step 2: `env.ts`** — remove `OPENROUTER_API_KEY` and `LLM_MODEL` from the zod schema (keep `IQ_GATEWAY_*`, `DEFILLAMA_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY` for now).
-- [ ] **Step 3: Delete the three files.** Run: `git rm src/utils/data-filter.ts src/lib/utils/markdown-formatter.ts src/lib/integrations/openrouter.ts`
+- [ ] **Step 3: Delete the three files + the now-unused deps.** Run: `git rm src/utils/data-filter.ts src/lib/utils/markdown-formatter.ts src/lib/integrations/openrouter.ts`. Then remove `@openrouter/ai-sdk-provider` and `js-tiktoken` from `package.json` (their only importers — `base.service.ts`, `data-filter.ts`, `services/index.ts` — are now gone/rewritten) and run `pnpm install`. (Deferred from Task 1.1 — finding.)
 - [ ] **Step 4: Build.** Run: `pnpm build` → Expected: type errors only from `src/tools/index.ts` (still calls old methods) — fixed in Task 1.5. If errors appear elsewhere, fix imports.
-- [ ] **Step 5: Stage (commit lands with 1.5).** `git add src/services/index.ts src/env.ts` plus the deletions.
+- [ ] **Step 5: Stage (commit lands with 1.5).** `git add src/services/index.ts src/env.ts package.json pnpm-lock.yaml` plus the deletions.
 
 ### Task 1.5 — Rewire the legacy 19 tools onto `*Raw()`
 
@@ -397,8 +397,8 @@ execute: async (args) => {
   1.2–1.4 plus this task lands as one green commit:
 
 ```bash
-git add src/services src/config.ts src/env.ts src/tools/index.ts src/tools/index.test.ts
-git commit -m "refactor!: services return full JSON via *Raw(); rewire legacy tools; drop host-side filter"
+git add src/services src/config.ts src/env.ts src/tools/index.ts src/tools/index.test.ts package.json pnpm-lock.yaml
+git commit -m "refactor!: services return full JSON via *Raw(); rewire legacy tools; drop host-side filter + deps"
 ```
 
 ### Task 1.6 — ADR
@@ -515,7 +515,7 @@ describe("tool-metadata side-effect-freeness", () => {
 },
 ```
 
-- [ ] **Step 4: Run green** (import test + a `tool-metadata.test.ts` asserting 23 entries, unique `qualified`, every `sandboxImpl` resolves to a function via `await m.sandboxImpl()`). Run: `pnpm vitest run src/mcp/catalog` → PASS.
+- [ ] **Step 4: Run green** (import test + a `tool-metadata.test.ts` asserting 23 entries, unique `qualified`, every `sandboxImpl` resolves to a function via `await m.sandboxImpl()`). Run: **`pnpm build && pnpm vitest run src/mcp/catalog`** — the build is required because the import test loads `dist/mcp/catalog/tool-metadata.js`, and bare `pnpm vitest` does **not** run `pretest`/`tsc` (finding), so it would otherwise read missing/stale `dist`. (Or just run `pnpm test`, which builds via `pretest`.) → PASS.
 - [ ] **Step 5: Commit.** `git commit -m "feat(catalog): side-effect-free tool-metadata for 23 endpoints"`
 
 **Phase 2 exit:** `pnpm test` green; import test proves side-effect-freeness.
@@ -616,7 +616,17 @@ export async function resolveChain(input: string): Promise<ChainResolved | null>
 
 **Files:** Create `src/mcp/execute/{scope,sandbox,tool,client}.ts` + their `*.test.ts`; integration `tests/integration/{setup.ts, execute.test.ts, lazy-isolated-vm.test.ts, no-isolated-vm.register.mjs, no-isolated-vm.hooks.mjs}`; modify `package.json`.
 
-- [ ] **Step 1:** `package.json` — add `optionalDependencies: { "isolated-vm": "^6.1.2" }`, `pnpm.onlyBuiltDependencies: ["esbuild","isolated-vm","msw"]`, `engines.node: ">=22"`, and `--no-node-snapshot` on `start`. Run `pnpm install`.
+- [ ] **Step 1:** `package.json` — add `engines.node: ">=22"`, `--no-node-snapshot` on the `start` script, `optionalDependencies`, and the **nested `pnpm` config block** (a top-level dotted `"pnpm.onlyBuiltDependencies"` key is ignored by pnpm — finding):
+
+```json
+"optionalDependencies": {
+  "isolated-vm": "^6.1.2"
+},
+"pnpm": {
+  "onlyBuiltDependencies": ["esbuild", "isolated-vm", "msw"]
+}
+```
+  Run `pnpm install`.
 - [ ] **Step 2:** Copy `src/mcp/execute/scope.ts` from debank verbatim; rename env vars `DEBANK_MCP_EXECUTE_*` → `DEFILLAMA_MCP_EXECUTE_*`. Copy its `scope.test.ts`; adjust env names.
 - [ ] **Step 3:** Copy `src/mcp/execute/sandbox.ts` and `tool.ts` from debank verbatim (lazy `isolated-vm` import already there). Copy their tests; rename the global namespace `debank` → `defillama` in any assertions.
 - [ ] **Step 4:** Copy `src/mcp/execute/client.ts` from debank and adapt **only**: (a) `parseQualified` prefix check `"debank"` → `"defillama"`; (b) global namespace `debank` → `defillama`; (c) the resolver install list at the bottom — install `resolveChain` (returns `{name,slug}`), `resolveProtocol`, `resolveStablecoin` (all async; no `resolveWrappedToken`/sync variant); (d) import `TOOL_METADATA` from `../catalog/tool-metadata.js`. Keep the envelope contract, dual-timeout, `safeParse` bridge validation, and `cancelScope` wiring unchanged. Copy `client.test.ts`; adapt names.
