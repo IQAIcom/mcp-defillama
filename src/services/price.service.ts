@@ -1,4 +1,8 @@
-import { createChildLogger } from "../lib/utils/index.js";
+import { config } from "../config.js";
+import {
+	createChildLogger,
+	createLogAndWrapError,
+} from "../lib/utils/index.js";
 import type {
 	BatchHistoricalResponse,
 	ChartResponse,
@@ -6,20 +10,11 @@ import type {
 	FirstPricesResponse,
 	PercentageResponse,
 } from "../types.js";
-import { BaseService } from "./base.service.js";
+import { BaseService, type RequestOptions } from "./base.service.js";
 
 const logger = createChildLogger("DefiLlama MCP Price Service");
 
-const logAndWrapError = (context: string, error: unknown): Error => {
-	if (error instanceof Error) {
-		logger.error(context, error);
-		return error;
-	}
-
-	const wrappedError = new Error(String(error));
-	logger.error(context, wrappedError);
-	return wrappedError;
-};
+const logAndWrapError = createLogAndWrapError(logger);
 
 /**
  * Price Service
@@ -27,12 +22,12 @@ const logAndWrapError = (context: string, error: unknown): Error => {
  */
 export class PriceService extends BaseService {
 	/**
-	 * Get current prices for coins
+	 * Get current prices for coins (/prices/current/{coins})
 	 */
-	async getPricesCurrentCoins(args: {
-		coins: string;
-		searchWidth?: string | number;
-	}): Promise<string> {
+	async getCurrentPricesRaw(
+		args: { coins: string; searchWidth?: string | number },
+		options?: RequestOptions,
+	): Promise<CurrentPricesResponse> {
 		try {
 			const coinsSegment = encodeURIComponent(args.coins);
 			const params = new URLSearchParams();
@@ -45,11 +40,11 @@ export class PriceService extends BaseService {
 				params.toString() ? `?${params.toString()}` : ""
 			}`;
 
-			const data = await this.fetchData<CurrentPricesResponse>(url);
-			return await this.formatResponse(data, {
-				title: "Current Coin Prices",
-				currencyFields: ["price"],
-			});
+			return await this.fetchData<CurrentPricesResponse>(
+				url,
+				config.priceTtl,
+				options,
+			);
 		} catch (error) {
 			throw logAndWrapError(
 				`Failed to fetch current prices for coins ${args.coins}`,
@@ -59,16 +54,19 @@ export class PriceService extends BaseService {
 	}
 
 	/**
-	 * Get first recorded prices for coins
+	 * Get first recorded prices for coins (/prices/first/{coins})
 	 */
-	async getPricesFirstCoins(args: { coins: string }): Promise<string> {
+	async getFirstPricesRaw(
+		args: { coins: string },
+		options?: RequestOptions,
+	): Promise<FirstPricesResponse> {
 		try {
 			const url = `${this.COINS_URL}/prices/first/${args.coins}`;
-			const data = await this.fetchData<FirstPricesResponse>(url);
-			return await this.formatResponse(data, {
-				title: "First Recorded Prices",
-				currencyFields: ["price"],
-			});
+			return await this.fetchData<FirstPricesResponse>(
+				url,
+				config.priceTtl,
+				options,
+			);
 		} catch (error) {
 			throw logAndWrapError(
 				`Failed to fetch first recorded prices for coins ${args.coins}`,
@@ -78,16 +76,28 @@ export class PriceService extends BaseService {
 	}
 
 	/**
-	 * Get batch historical prices
+	 * Get batch historical prices (/batchHistorical)
 	 */
-	async getBatchHistorical(args: {
-		coins: string;
-		searchWidth?: string | number;
-	}): Promise<string> {
+	async getBatchHistoricalRaw(
+		args: {
+			coins: string | Record<string, Array<number | string>>;
+			searchWidth?: string | number;
+		},
+		options?: RequestOptions,
+	): Promise<BatchHistoricalResponse> {
 		try {
-			const params = new URLSearchParams({
-				coins: args.coins,
-			});
+			/*
+			 * Pass raw JSON (string form as-is); URLSearchParams encodes the value
+			 * exactly once. Pre-encoding with encodeURIComponent here would
+			 * double-encode (URLSearchParams encodes again), and DefiLlama would
+			 * then fail to JSON-parse the coins param.
+			 */
+			const coinsParam =
+				typeof args.coins === "string"
+					? args.coins
+					: JSON.stringify(args.coins);
+
+			const params = new URLSearchParams({ coins: coinsParam });
 
 			if (args.searchWidth !== undefined) {
 				params.append("searchWidth", String(args.searchWidth));
@@ -95,27 +105,31 @@ export class PriceService extends BaseService {
 
 			const url = `${this.COINS_URL}/batchHistorical?${params.toString()}`;
 
-			const data = await this.fetchData<BatchHistoricalResponse>(url);
-			return await this.formatResponse(data, {
-				title: "Batch Historical Prices",
-				currencyFields: ["price"],
-			});
+			return await this.fetchData<BatchHistoricalResponse>(
+				url,
+				config.priceTtl,
+				options,
+			);
 		} catch (error) {
 			throw logAndWrapError(
-				`Failed to fetch batch historical prices for coins ${args.coins}`,
+				`Failed to fetch batch historical prices for coins ${String(args.coins)}`,
 				error,
 			);
 		}
 	}
 
 	/**
-	 * Get historical prices by contract address at specific timestamp
+	 * Get historical prices by contract address at a specific timestamp
+	 * (/prices/historical/{timestamp}/{coins})
 	 */
-	async getHistoricalPricesByContractAddress(args: {
-		coins: string;
-		timestamp: string | number;
-		searchWidth?: string | number;
-	}): Promise<string> {
+	async getHistoricalPricesRaw(
+		args: {
+			coins: string;
+			timestamp: string | number;
+			searchWidth?: string | number;
+		},
+		options?: RequestOptions,
+	): Promise<CurrentPricesResponse> {
 		try {
 			const unixTime = this.toUnixSeconds(args.timestamp);
 			const coinsSegment = encodeURIComponent(args.coins);
@@ -129,11 +143,11 @@ export class PriceService extends BaseService {
 				params.toString() ? `?${params.toString()}` : ""
 			}`;
 
-			const data = await this.fetchData<CurrentPricesResponse>(url);
-			return await this.formatResponse(data, {
-				title: `Historical Prices at ${new Date(unixTime * 1000).toISOString()}`,
-				currencyFields: ["price"],
-			});
+			return await this.fetchData<CurrentPricesResponse>(
+				url,
+				config.priceTtl,
+				options,
+			);
 		} catch (error) {
 			throw logAndWrapError(
 				`Failed to fetch historical prices for coins ${args.coins} at timestamp ${args.timestamp}`,
@@ -143,14 +157,17 @@ export class PriceService extends BaseService {
 	}
 
 	/**
-	 * Get percentage price change for coins
+	 * Get percentage price change for coins (/percentage/{coins})
 	 */
-	async getPercentageCoins(args: {
-		coins: string;
-		period?: string;
-		lookForward?: boolean;
-		timestamp?: string | number;
-	}): Promise<string> {
+	async getPercentageChangeRaw(
+		args: {
+			coins: string;
+			period?: string;
+			lookForward?: boolean;
+			timestamp?: string | number;
+		},
+		options?: RequestOptions,
+	): Promise<PercentageResponse> {
 		try {
 			const coinsSegment = encodeURIComponent(args.coins);
 			const params = new URLSearchParams();
@@ -165,11 +182,11 @@ export class PriceService extends BaseService {
 			const url = `${this.COINS_URL}/percentage/${coinsSegment}${
 				params.toString() ? `?${params.toString()}` : ""
 			}`;
-			const data = await this.fetchData<PercentageResponse>(url);
-			return await this.formatResponse(data, {
-				title: "Price Percentage Change",
-				numberFields: ["percentage"],
-			});
+			return await this.fetchData<PercentageResponse>(
+				url,
+				config.priceTtl,
+				options,
+			);
 		} catch (error) {
 			throw logAndWrapError(
 				`Failed to fetch percentage changes for coins ${args.coins}`,
@@ -179,16 +196,19 @@ export class PriceService extends BaseService {
 	}
 
 	/**
-	 * Get chart data for coins
+	 * Get chart data for coins (/chart/{coins})
 	 */
-	async getChartCoins(args: {
-		coins: string;
-		start?: string | number;
-		end?: string | number;
-		span?: number;
-		period?: string;
-		searchWidth?: string | number;
-	}): Promise<string> {
+	async getPriceChartRaw(
+		args: {
+			coins: string;
+			start?: string | number;
+			end?: string | number;
+			span?: number;
+			period?: string;
+			searchWidth?: string | number;
+		},
+		options?: RequestOptions,
+	): Promise<ChartResponse> {
 		try {
 			let url = `${this.COINS_URL}/chart/${args.coins}`;
 			const params = new URLSearchParams();
@@ -202,11 +222,7 @@ export class PriceService extends BaseService {
 
 			if (params.toString()) url += `?${params.toString()}`;
 
-			const data = await this.fetchData<ChartResponse>(url);
-			return await this.formatResponse(data, {
-				title: "Price Chart Data",
-				currencyFields: ["price"],
-			});
+			return await this.fetchData<ChartResponse>(url, config.priceTtl, options);
 		} catch (error) {
 			throw logAndWrapError(
 				`Failed to fetch chart data for coins ${args.coins}`,

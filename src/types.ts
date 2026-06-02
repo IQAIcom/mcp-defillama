@@ -207,7 +207,7 @@ export type StablecoinsResponse = {
  */
 export type StablecoinChainItem = {
 	name: string;
-	totalCirculating: {
+	totalCirculatingUSD: {
 		peggedUSD: number;
 	};
 };
@@ -417,6 +417,26 @@ export type OptionsOverviewResponse = {
 	[key: string]: unknown;
 };
 
+/**
+ * Options summary response from /summary/options/{protocol}
+ */
+export type OptionsSummaryResponse = {
+	id?: string;
+	name?: string;
+	displayName?: string;
+	chains?: string[];
+	total24h?: number;
+	total7d?: number;
+	total30d?: number;
+	totalAllTime?: number;
+	change_1d?: number;
+	change_7d?: number;
+	change_1m?: number;
+	totalDataChart?: Array<[number, number]>;
+	totalDataChartBreakdown?: Array<[number, Record<string, unknown>]>;
+	[key: string]: unknown;
+};
+
 // ============================================================================
 // Blockchain
 // ============================================================================
@@ -427,6 +447,15 @@ export type OptionsOverviewResponse = {
 export type BlockData = {
 	height: number;
 	timestamp: number;
+	[key: string]: unknown;
+};
+
+/**
+ * Block response from /block/{chain}/{timestamp}
+ */
+export type BlockResponse = {
+	height?: number;
+	timestamp?: number;
 	[key: string]: unknown;
 };
 

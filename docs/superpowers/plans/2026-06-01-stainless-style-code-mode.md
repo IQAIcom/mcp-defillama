@@ -685,11 +685,15 @@ export async function resolveChain(input: string): Promise<ChainResolved | null>
 
 ## Phase 9 — README + docs + changeset
 
-**Files:** Rewrite `README.md`; optional `docs/style/code-comments.md`; create `.changeset/<name>.md`.
+**Files:** Rewrite `README.md`; optional `docs/style/code-comments.md`; create `.changeset/<name>.md`; update/retire `.github/workflows/sync-tools.yml` + `.github/actions/generate-mcp-tools/generate-tools.mjs`.
 
 - [ ] **Step 1:** Rewrite `README.md` mirroring `debank-mcp/README.md` structure: Architecture diagram, Mermaid sequence diagram, default vs dynamic tools, Safety limits (budget/concurrency/timeouts), `jq_filter`, Error envelopes, ADK usage, Node 22 + absolute-path-in-`command` note (gotcha #3), Screenshots placeholder. No version-specific claims (gotcha #16).
-- [ ] **Step 2:** Add one changeset (`.changeset/*.md`) describing the breaking change (single changeset for the whole PR per D-5). Run: `pnpm changeset` or hand-author.
-- [ ] **Step 3: Commit.** `git commit -m "docs: rewrite README for Code Mode; add breaking-change changeset"`
+- [ ] **Step 2: Reconcile the README auto-sync workflow (finding from CI).** The `Sync MCP Tool Docs` workflow (`.github/workflows/sync-tools.yml`) runs `.github/actions/generate-mcp-tools/generate-tools.mjs`, which regenerates a per-tool README section from `src/tools/index.ts`. That file is **deleted in Phase 8**, so the generator will either error or overwrite the hand-written Code Mode README and fight it on every push to `main`. Resolve one of two ways:
+  - **Retire it** — delete `sync-tools.yml` + `generate-mcp-tools/` if the new README is maintained by hand (recommended; the 2-tool surface doesn't need per-endpoint auto-docs). OR
+  - **Repoint it** — rewrite `generate-tools.mjs` to read `src/mcp/catalog/tool-metadata.ts` (the ~23 endpoints) into a clearly-delimited, auto-generated section the manual README leaves alone.
+  Whichever path, verify a push to a test branch doesn't produce a competing README commit.
+- [ ] **Step 3:** Add one changeset (`.changeset/*.md`) describing the breaking change (single changeset for the whole PR per D-5). Run: `pnpm changeset` or hand-author.
+- [ ] **Step 4: Commit.** `git commit -m "docs: rewrite README for Code Mode; reconcile sync-tools; add breaking-change changeset"`
 
 **PR exit:** `pnpm build` + `pnpm test` green; default surface = 2 tools; dynamic = +4; ADK + IQ Gateway + four hosts intact; no LLM filter/resolver/deps remain.
 
