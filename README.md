@@ -332,9 +332,9 @@ The `execute` sandbox enforces five bounds. Defaults are tuned for legitimate `P
 | Limit | Default | Override | Behaviour on hit |
 | :--- | :--- | :--- | :--- |
 | Isolate memory | 128 MiB | hard-coded | Isolate is terminated; error surfaces as script timeout (V8 conflates OOM with timeout in some paths) |
-| Script wall clock | 30 s | `DEFILLAMA_MCP_SANDBOX_DEADLINE_MS` (test-only) | Returns `"Execute timed out after 30s."` |
-| Calls per `execute` | 100 | `DEFILLAMA_MCP_EXECUTE_BUDGET` | Subsequent guest calls return budget-exceeded error |
-| Concurrent calls | 10 | `DEFILLAMA_MCP_EXECUTE_CONCURRENCY` | Calls queue on a semaphore; no error, just back-pressure |
+| Script wall clock | 30 s | internal (test only) | Returns `"Execute timed out after 30s."` |
+| Calls per `execute` | 100 | internal (test only) | Subsequent guest calls return budget-exceeded error |
+| Concurrent calls | 10 | internal (test only) | Calls queue on a semaphore; no error, just back-pressure |
 | Per-call upstream | 5 s abort + 6 s axios | hard-coded | Returns `"DefiLlama call timed out after 5s: <method>"` |
 
 These limits protect DefiLlama's public rate limits, which are not tied to any user credential.
