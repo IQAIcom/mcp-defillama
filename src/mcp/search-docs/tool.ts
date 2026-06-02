@@ -7,7 +7,7 @@ const PARAMS = z.object({
 	query: z
 		.string()
 		.describe(
-			"Free-text query, e.g. 'get token balance' or 'simulate transaction'.",
+			"Free-text query, e.g. 'top protocols by tvl' or 'stablecoin circulating supply by chain'.",
 		),
 	detail: z
 		.enum(["default", "verbose"])
@@ -122,7 +122,7 @@ export const searchDocsTool = {
 						type: "text" as const,
 						text: JSON.stringify({
 							results: [],
-							hint: "Provide a query like 'get token balance'.",
+							hint: "Provide a query like 'top protocols by tvl' or 'yield pools by apy'.",
 						}),
 					},
 				],

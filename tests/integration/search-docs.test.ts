@@ -1,9 +1,8 @@
 // tests/integration/search-docs.test.ts
 //
-// Exercises the search_docs tool's execute() directly (adapted from debank).
-// The full two-tool server (execute + search_docs) isn't wired in src/index.ts
-// until Phase 8, so this does NOT spawn the server — the full tool-listing
-// smoke is a Phase 8 assertion (tests/integration/setup-smoke.test.ts).
+// Exercises the search_docs tool's execute() directly. The full tool-listing
+// smoke (the two-tool default surface plus the dynamic four) lives in
+// tests/integration/setup-smoke.test.ts, which spawns the built server.
 import { describe, expect, it } from "vitest";
 import { searchDocsTool } from "../../src/mcp/search-docs/tool.js";
 
