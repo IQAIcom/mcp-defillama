@@ -133,9 +133,17 @@ async function getProtocolCatalog(): Promise<ProtocolData[]> {
 }
 
 function protocolSlug(p: ProtocolData): string {
-	const slug = typeof p.slug === "string" ? p.slug : undefined;
-	if (slug) return slug;
-	return p.name.toLowerCase().replace(/\s+/g, "-");
+	// `p` comes from the untrusted live /protocols payload, so guard every field.
+	// Prefer the real slug; else slugify the name; else fall back to the symbol.
+	// A matched protocol always has at least one of these as a non-empty string
+	// (the matcher only matches on slug/name/symbol === query), so this never
+	// returns "" for a real match — and never throws on a missing/non-string field.
+	if (typeof p.slug === "string" && p.slug) return p.slug;
+	if (typeof p.name === "string" && p.name) {
+		return p.name.toLowerCase().replace(/\s+/g, "-");
+	}
+	if (typeof p.symbol === "string" && p.symbol) return p.symbol.toLowerCase();
+	return "";
 }
 
 /**

@@ -151,6 +151,19 @@ describe("resolveProtocol", () => {
 		const { resolveProtocol } = await loadResolver();
 		expect(await resolveProtocol("Lido")).toBeNull();
 	});
+
+	it("resolves via symbol without throwing when name/slug are missing", async () => {
+		// Untrusted live payload: an entry with only a symbol (no slug, no name).
+		// protocolSlug must fall back to the symbol rather than crash on
+		// undefined.toLowerCase().
+		server.use(
+			http.get(PROTOCOLS_URL, () =>
+				HttpResponse.json([{ id: "9", symbol: "FOO", tvl: 1 }]),
+			),
+		);
+		const { resolveProtocol } = await loadResolver();
+		expect(await resolveProtocol("FOO")).toBe("foo");
+	});
 });
 
 describe("resolveStablecoin", () => {
