@@ -12,7 +12,7 @@
 	],
 	"scripts": {
 		"prebuild": "pnpm run build:docs && pnpm run build:instructions",
-		"build": "tsc && shx chmod +x dist/index.js",
+		"build": "shx rm -rf dist && tsc && shx chmod +x dist/index.js",
 		"build:docs": "tsx scripts/build-docs-index.ts",
 		"build:instructions": "tsx scripts/build-instructions.ts",
 		"prepare": "husky",

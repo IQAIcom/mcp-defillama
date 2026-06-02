@@ -13,18 +13,26 @@ const logger = createChildLogger("DefiLlama MCP");
 const require = createRequire(import.meta.url);
 
 type SemverString = `${number}.${number}.${number}`;
-function assertSemver(v: string): asserts v is SemverString {
-	if (!/^\d+\.\d+\.\d+$/.test(v)) {
+/**
+ * Extract the major.minor.patch core from a package version, tolerating npm
+ * prerelease/build metadata (e.g. "1.0.0-beta.0", "1.0.0+build.5") — Changesets
+ * prerelease mode emits those. FastMCP's `version` field is typed
+ * `${number}.${number}.${number}`, so we hand it the core; the full version
+ * still lives in package.json. Throws only when there's no valid X.Y.Z core.
+ */
+function semverCore(v: string): SemverString {
+	const m = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(v);
+	if (!m) {
 		throw new Error(
-			`package.json version "${v}" is not a major.minor.patch semver string`,
+			`package.json version "${v}" has no major.minor.patch core`,
 		);
 	}
+	return `${m[1]}.${m[2]}.${m[3]}` as SemverString;
 }
 const { version: rawVersion } = require("../package.json") as {
 	version: string;
 };
-assertSemver(rawVersion);
-const version: SemverString = rawVersion;
+const version: SemverString = semverCore(rawVersion);
 
 function dynamicToolsEnabled(): boolean {
 	if (process.env.DEFILLAMA_MCP_TOOLS === "dynamic") return true;
