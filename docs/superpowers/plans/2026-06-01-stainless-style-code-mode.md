@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript (NodeNext, ES2022), Node ≥22, `fastmcp`, `isolated-vm` (optional dep, lazy-imported), `minisearch`, `jqts`, `zod@4`, `axios`, `vitest` + `msw`, `tsx` (build scripts), Biome.
 
-**Reference implementation:** `/Users/aliusalaudeen/Documents/GitHub/debank-mcp` — read named files there when a task says "copy/adapt from debank."
+**Reference implementation:** debank-mcp — GitHub [`IQAIcom/mcp-debank`](https://github.com/IQAIcom/mcp-debank) (npm `@iqai/mcp-debank`). Read the named files there when a task says "copy/adapt from debank"; on the dev machine it sits as a sibling directory of this repo.
 
 **Design doc (contract):** `docs/superpowers/specs/2026-06-01-stainless-style-refactor.md`. Decisions D-1…D-5 and concerns C1…C9 are binding; this plan implements them.
 
