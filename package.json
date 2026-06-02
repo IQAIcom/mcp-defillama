@@ -20,12 +20,15 @@
 		"test": "cross-env NODE_OPTIONS=--no-node-snapshot vitest run",
 		"test:watch": "cross-env NODE_OPTIONS=--no-node-snapshot vitest",
 		"watch": "tsc --watch",
-		"start": "node dist/index.js",
+		"start": "node --no-node-snapshot dist/index.js",
 		"format": "biome format . --write",
 		"lint": "biome check . --write",
 		"changeset": "changeset",
 		"version-packages": "pnpm changeset version",
 		"publish-packages": "pnpm build && pnpm changeset publish"
+	},
+	"engines": {
+		"node": ">=22"
 	},
 	"keywords": [
 		"mcp",
@@ -60,6 +63,16 @@
 		"typescript": "^5.9.3",
 		"vitest": "^4.1.8",
 		"zod-to-json-schema": "^3.25.1"
+	},
+	"optionalDependencies": {
+		"isolated-vm": "^6.1.2"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild",
+			"isolated-vm",
+			"msw"
+		]
 	},
 	"lint-staged": {
 		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
