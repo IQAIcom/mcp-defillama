@@ -95,12 +95,22 @@ export async function resolveChain(
 		);
 	}
 
-	// Substring match, either direction. The `q.includes(name)` arm is guarded by
-	// a minimum chain-name length so short names (Base, Sei, TON, Op, BNB) don't
-	// false-positive on unrelated inputs like "base58" -> Base or "tronlink" -> Tron.
+	// Substring match, either direction — both arms length-guarded so the fuzzy
+	// fallback can't produce arbitrary matches:
+	//  - `name.includes(q)` only fires for queries of >= 3 chars, so a 1-2 char
+	//    query ("e", "ar") doesn't match the first chain that happens to contain
+	//    it ("Ethereum", "Arbitrum"). Short canonical names resolve via the exact
+	//    or alias steps above.
+	//  - `q.includes(name)` only fires for chain names of >= 4 chars, so short
+	//    names (Base, Sei, TON, Op, BNB) don't false-positive on unrelated inputs
+	//    like "base58" -> Base or "tronlink" -> Tron.
+	const MIN_QUERY_SUBSTRING_LEN = 3;
 	const partial = rows.find((r) => {
 		const name = r.name.toLowerCase();
-		return name.includes(q) || (name.length >= 4 && q.includes(name));
+		return (
+			(q.length >= MIN_QUERY_SUBSTRING_LEN && name.includes(q)) ||
+			(name.length >= 4 && q.includes(name))
+		);
 	});
 	if (partial) return partial;
 

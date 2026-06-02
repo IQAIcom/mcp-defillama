@@ -115,6 +115,19 @@ describe("resolveChain", () => {
 		expect(await resolveChain("proton")).toBeNull();
 		expect(await resolveChain("TON")).toEqual({ name: "TON", slug: "ton" });
 	});
+
+	it("does not fuzzy-match 1-2 char queries via substring", async () => {
+		const { resolveChain } = await loadResolver();
+		// "e" would otherwise substring-match "Ethereum"; "so" would match "Solana".
+		// Short queries must resolve via exact/alias only, not the fuzzy fallback.
+		expect(await resolveChain("e")).toBeNull();
+		expect(await resolveChain("so")).toBeNull();
+		// A >= 3 char substring still resolves through the fuzzy fallback.
+		expect(await resolveChain("pol")).toEqual({
+			name: "Polygon",
+			slug: "polygon",
+		});
+	});
 });
 
 describe("resolveProtocol", () => {
