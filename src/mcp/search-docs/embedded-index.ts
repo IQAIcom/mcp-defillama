@@ -737,4 +737,60 @@ export const ENTRIES: IndexEntry[] = [
 		exampleCall:
 			"await defillama.blockchain.getBlockAtTimestamp({chain: 'ethereum', timestamp: 1640000000})",
 	},
+	{
+		kind: "prose",
+		id: "cookbook:01-top-protocols-by-tvl.md",
+		title: "Rank the top protocols by TVL",
+		content:
+			"# Rank the top protocols by TVL\n\nFetches every protocol DefiLlama tracks and returns the ten largest by current TVL, with the chains each protocol is deployed on. `getProtocols()` returns the full unsorted array, so the sort/slice/projection happens in your `execute()` script — only the small projected result crosses the sandbox boundary.\n\n```js\nasync function run(defillama) {\n  const protocols = await defillama.protocol.getProtocols();\n  return protocols\n    .sort((a, b) => (b.tvl ?? 0) - (a.tvl ?? 0))\n    .slice(0, 10)\n    .map((p) => ({ name: p.name, tvl: p.tvl, chains: p.chains }));\n}\n```\n",
+	},
+	{
+		kind: "prose",
+		id: "cookbook:02-dex-volume-leaderboard.md",
+		title: "DEX volume leaderboard for a chain",
+		content:
+			'# DEX volume leaderboard for a chain\n\nBuilds a leaderboard of the highest-volume DEXs on a single chain using 24h volume. `getDexsOverview` expects the chain **display name** (e.g. `\'Ethereum\'`) for api.llama.fi — use `defillama.resolveChain(...).name` to turn a user alias like "eth" into the correct display name first. The DEX rows live under `.protocols`.\n\n```js\nasync function run(defillama) {\n  const chain = await defillama.resolveChain("Ethereum"); // {name, slug}\n  const overview = await defillama.dex.getDexsOverview({ chain: chain.name });\n  return (overview.protocols ?? [])\n    .sort((a, b) => (b.total24h ?? 0) - (a.total24h ?? 0))\n    .slice(0, 10)\n    .map((d) => ({ name: d.name, volume24h: d.total24h }));\n}\n```\n',
+	},
+	{
+		kind: "prose",
+		id: "cookbook:03-fees-vs-revenue.md",
+		title: "Compare protocol fees vs revenue",
+		content:
+			"# Compare protocol fees vs revenue\n\nJoins each protocol's 24h fees against its 24h revenue to surface where fees translate into protocol revenue. Call `getFeesOverview` twice — once with `dataType: 'dailyFees'` and once with `dataType: 'dailyRevenue'` — then join the two `.protocols` arrays by name.\n\n```js\nasync function run(defillama) {\n  const feesOv = await defillama.fees.getFeesOverview({ dataType: \"dailyFees\" });\n  const revOv = await defillama.fees.getFeesOverview({ dataType: \"dailyRevenue\" });\n\n  const revByName = new Map(\n    (revOv.protocols ?? []).map((p) => [p.name, p.total24h ?? 0]),\n  );\n\n  return (feesOv.protocols ?? [])\n    .map((p) => ({\n      name: p.name,\n      fees24h: p.total24h ?? 0,\n      revenue24h: revByName.get(p.name) ?? 0,\n    }))\n    .sort((a, b) => b.fees24h - a.fees24h)\n    .slice(0, 10);\n}\n```\n",
+	},
+	{
+		kind: "prose",
+		id: "cookbook:04-stablecoin-mcap-by-chain.md",
+		title: "Stablecoin market cap by chain",
+		content:
+			"# Stablecoin market cap by chain\n\nReturns total stablecoin circulating market cap broken down per chain, sorted largest first. `getStablecoinChains()` returns one row per chain; the USD total lives under `totalCirculatingUSD.peggedUSD`.\n\n```js\nasync function run(defillama) {\n  const chains = await defillama.stablecoin.getStablecoinChains();\n  return chains\n    .map((c) => ({\n      chain: c.name,\n      circulatingUsd: c.totalCirculatingUSD?.peggedUSD ?? 0,\n    }))\n    .sort((a, b) => b.circulatingUsd - a.circulatingUsd);\n}\n```\n",
+	},
+	{
+		kind: "prose",
+		id: "cookbook:05-token-price-history.md",
+		title: "Token price history via chain:address",
+		content:
+			'# Token price history via chain:address\n\nFetches a historical price chart for a token. The coins API identifies tokens as `{chainSlug}:{address}` with a **lowercase** chain slug — use `defillama.resolveChain(...).slug` to build the key (the `.slug` form feeds coins.llama.fi, not the `.name` form). `getPriceChart` returns a series keyed by the same coins identifier under `.coins[key].prices`.\n\n```js\nasync function run(defillama) {\n  const chain = await defillama.resolveChain("Ethereum"); // {name, slug:"ethereum"}\n  const key = chain.slug + ":0xdac17f958d2ee523a2206206994597c13d831ec7"; // USDT\n  const chart = await defillama.price.getPriceChart({\n    coins: key,\n    span: 30,\n    period: "1d",\n  });\n  const series = chart.coins?.[key]?.prices ?? [];\n  return { coin: key, points: series.length, prices: series };\n}\n```\n',
+	},
+	{
+		kind: "prose",
+		id: "cookbook:06-block-at-timestamp-tvl.md",
+		title: "Correlate a block at a timestamp with historical chain TVL",
+		content:
+			'# Correlate a block at a timestamp with historical chain TVL\n\nResolves the block closest to a given timestamp, then pulls the historical TVL series for the same chain so you can correlate on-chain state with TVL. Note the two host conventions: `getBlockAtTimestamp` is a coins.llama.fi call and wants the **lowercase slug** (`chain.slug`), while `getHistoricalChainTvl` is an api.llama.fi call and wants the **display name** (`chain.name`).\n\n```js\nasync function run(defillama) {\n  const chain = await defillama.resolveChain("Ethereum"); // {name:"Ethereum", slug:"ethereum"}\n  const timestamp = 1700000000;\n\n  const block = await defillama.blockchain.getBlockAtTimestamp({\n    chain: chain.slug,\n    timestamp,\n  });\n  const tvl = await defillama.protocol.getHistoricalChainTvl({\n    chain: chain.name,\n  });\n\n  return {\n    height: block.height,\n    blockTimestamp: block.timestamp,\n    tvlPoints: tvl.length,\n    latestTvl: tvl[tvl.length - 1],\n  };\n}\n```\n',
+	},
+	{
+		kind: "prose",
+		id: "cookbook:07-yield-pool-screen.md",
+		title: "Screen yield pools, then drill into one",
+		content:
+			"# Screen yield pools, then drill into one\n\nFilters the full yield-pool universe by minimum TVL and APY, takes the top pools by APY, then fetches the historical APY/TVL series for the single best pool. `getLatestPools()` returns rows under `.data`; each row's `pool` UUID feeds `getHistoricalPoolData`.\n\n```js\nasync function run(defillama) {\n  const { data } = await defillama.yield.getLatestPools();\n  const screened = data\n    .filter((p) => (p.tvlUsd ?? 0) >= 1_000_000 && (p.apy ?? 0) >= 5)\n    .sort((a, b) => (b.apy ?? 0) - (a.apy ?? 0))\n    .slice(0, 5)\n    .map((p) => ({\n      pool: p.pool,\n      project: p.project,\n      symbol: p.symbol,\n      chain: p.chain,\n      tvlUsd: p.tvlUsd,\n      apy: p.apy,\n    }));\n\n  const top = screened[0];\n  const history = top\n    ? await defillama.yield.getHistoricalPoolData({ pool: top.pool })\n    : null;\n\n  return { screened, topPoolHistory: history?.data?.slice(-30) };\n}\n```\n",
+	},
+	{
+		kind: "prose",
+		id: "cookbook:08-resolve-names.md",
+		title: "Resolve chain, protocol, and stablecoin names",
+		content:
+			'# Resolve chain, protocol, and stablecoin names\n\nTranslates human-facing names into the exact identifiers each DefiLlama endpoint expects, deterministically (no LLM). The key convention: a chain resolves to BOTH a `name` and a `slug` — use `.name` for api.llama.fi group endpoints (protocols, dexs, fees, historical chain TVL) and `.slug` for coins.llama.fi calls (prices, block-at-timestamp). Protocols resolve to a slug string; stablecoins resolve to a numeric id string.\n\n```js\nasync function run(defillama) {\n  const chain = await defillama.resolveChain("BSC"); // {name:"BSC", slug:"bsc"}\n  const protocol = await defillama.resolveProtocol("Lido"); // "lido"\n  const stablecoin = await defillama.resolveStablecoin("USDC"); // e.g. "2"\n\n  // Use .name for api.llama.fi groups, .slug for coins/price endpoints.\n  return {\n    chainName: chain?.name, // -> getHistoricalChainTvl({chain: chain.name})\n    chainSlug: chain?.slug, // -> getBlockAtTimestamp({chain: chain.slug})\n    protocolSlug: protocol, // -> getProtocol({protocol})\n    stablecoinId: stablecoin, // -> getStablecoinCharts({stablecoin})\n  };\n}\n```\n',
+	},
 ];
