@@ -9,6 +9,22 @@ The DefiLlama MCP Server enables AI agents to interact with [DefiLlama](https://
 
 By implementing the Model Context Protocol (MCP), this server allows Large Language Models (LLMs) to query DeFi data through a **Code Mode** surface: instead of one tool per endpoint, agents write small JavaScript programs that run in a sandboxed `isolated-vm` environment against a pre-wired `defillama.*` client. Four opt-in dynamic tools are available for structured endpoint discovery and dispatch.
 
+## Demo
+
+The server in use from Claude. The agent uses `search_docs` to find the right method, writes a small program for the `execute` sandbox, and projects only the answer back across the boundary.
+
+**"Which protocol has the highest TVL 7-day change?"** — the agent loads the tools, calls `search_docs` to find how to read the change metric, then writes an `execute` program. It notices the raw leader is a data artifact (a protocol whose TVL jumped from near-zero, reading as a trillion-percent gain) and reasons toward the meaningful answer:
+
+![Code Mode loading tools, searching docs, and running execute on a 7-day TVL-change question](docs/assets/demo-tvl-7d-change-1.png)
+
+It then distinguishes the literal answer (3Jane Lending) from the meaningful one (STRATO, the top gainer among protocols with enough TVL for the percentage to be credible):
+
+![Code Mode reasoning about the data artifact and surfacing the meaningful TVL mover](docs/assets/demo-tvl-7d-change-2.png)
+
+**"Pools with high TVL and their 30-day APY"** — one `execute` call fetches the yield pools, ranks them by TVL, and formats `apyMean30d` into a table:
+
+![Code Mode ranking the highest-TVL yield pools with their 30-day mean APY](docs/assets/demo-yield-pools-apy.png)
+
 ## Requirements
 
 - Node.js >= 22 (required by `isolated-vm` 6.x for the `execute` sandbox).
