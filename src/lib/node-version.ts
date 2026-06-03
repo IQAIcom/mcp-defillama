@@ -25,9 +25,10 @@ export function checkNodeVersion(
 ): NodeVersionCheck {
 	// A missing/empty version is "can't determine" — fail open rather than block.
 	if (!version) return { ok: true };
-	// Major followed by a dot (full semver) or the end of the string (bare
-	// major like "22"). An unparseable string yields no match → fail open.
-	const match = /^v?(\d+)(?:\.|$)/.exec(version);
+	// Extract the leading major-version digits — handles full semver ("22.17.1"),
+	// a bare major ("22"), and prerelease/nightly suffixes ("v22.0.0-nightly",
+	// "v18-nightly"). A string with no leading digits yields no match → fail open.
+	const match = /^v?(\d+)/.exec(version);
 	if (!match) return { ok: true };
 
 	const major = Number(match[1]);

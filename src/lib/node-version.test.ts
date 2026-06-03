@@ -19,6 +19,12 @@ describe("checkNodeVersion", () => {
 		expect(checkNodeVersion("18").ok).toBe(false);
 	});
 
+	it("handles prerelease and nightly version strings", () => {
+		expect(checkNodeVersion("v22.0.0-nightly20241010")).toEqual({ ok: true });
+		expect(checkNodeVersion("v18.0.0-rc.1").ok).toBe(false);
+		expect(checkNodeVersion("v18-nightly").ok).toBe(false);
+	});
+
 	it("rejects an older major with an actionable message", () => {
 		const result = checkNodeVersion("v18.17.1");
 		expect(result.ok).toBe(false);
