@@ -8,7 +8,7 @@
  */
 import { checkNodeVersion } from "./lib/node-version.js";
 
-const check = checkNodeVersion(process.versions.node);
+const check = checkNodeVersion(process.versions?.node);
 if (!check.ok) {
 	process.stderr.write(`\n[defillama-mcp] ${check.message}\n\n`);
 	process.exit(1);

@@ -20,9 +20,11 @@ export type NodeVersionCheck = { ok: true } | { ok: false; message: string };
  * runtime is never wrongly blocked.
  */
 export function checkNodeVersion(
-	version: string,
+	version?: string | null,
 	minMajor: number = MIN_NODE_MAJOR,
 ): NodeVersionCheck {
+	// A missing/empty version is "can't determine" — fail open rather than block.
+	if (!version) return { ok: true };
 	// Major followed by a dot (full semver) or the end of the string (bare
 	// major like "22"). An unparseable string yields no match → fail open.
 	const match = /^v?(\d+)(?:\.|$)/.exec(version);

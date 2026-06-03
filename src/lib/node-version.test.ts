@@ -35,4 +35,9 @@ describe("checkNodeVersion", () => {
 	it("fails open on an unparseable version (never wrongly blocks a real runtime)", () => {
 		expect(checkNodeVersion("not-a-version")).toEqual({ ok: true });
 	});
+
+	it("fails open on undefined or null (can't determine → don't block)", () => {
+		expect(checkNodeVersion(undefined)).toEqual({ ok: true });
+		expect(checkNodeVersion(null)).toEqual({ ok: true });
+	});
 });
