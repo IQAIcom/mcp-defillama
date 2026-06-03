@@ -14,11 +14,15 @@ if (!check.ok) {
 	process.exit(1);
 }
 
-const { start } = await import("./server.js");
-await start().catch((error: unknown) => {
+try {
+	// The import is inside the try so a module-load failure (resolution, syntax,
+	// a transitive crash) is caught here too — not just errors thrown by start().
+	const { start } = await import("./server.js");
+	await start();
+} catch (error: unknown) {
 	// console.error prints the full error (incl. stack) to stderr, which is
 	// separate from the stdio JSON-RPC channel — keep the stack for debugging.
 	process.stderr.write("[defillama-mcp] Unexpected error during startup:\n");
 	console.error(error);
 	process.exit(1);
-});
+}
