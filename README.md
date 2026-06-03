@@ -102,19 +102,7 @@ Start with `--tools=dynamic` (or set `DEFILLAMA_MCP_TOOLS=dynamic`) to also regi
 }
 ```
 
-> **Note (Claude Desktop / older MCP clients):** Claude Desktop may resolve `pnpm` from an older Node in your `PATH`. If the server fails to start with a Node version error, use an **absolute path** to a Node >= 22 binary in the `"command"` field:
->
-> ```json
-> {
->   "mcpServers": {
->     "defillama": {
->       "command": "/usr/local/bin/node",
->       "args": ["--no-node-snapshot", "/path/to/dist/index.js"],
->       "env": {}
->     }
->   }
-> }
-> ```
+> **Note (Claude Desktop / older MCP clients):** Claude Desktop may resolve `pnpm`/`node` from an **older Node** in your `PATH`, which the server rejects (Node >= 22 is required). If startup fails with a Node version error, see [Troubleshooting](#troubleshooting) below.
 
 ## Configuration (Environment Variables)
 
@@ -126,6 +114,62 @@ All environment variables are optional. DefiLlama's public API works unauthentic
 | `IQ_GATEWAY_URL` | No | IQ Gateway base URL. When set together with `IQ_GATEWAY_KEY`, all upstream calls are proxied through the gateway (adds caching). | — |
 | `IQ_GATEWAY_KEY` | No | IQ Gateway API key; sent as `x-api-key` to the gateway. | — |
 | `DEFILLAMA_MCP_TOOLS` | No | Set to `dynamic` to register the four additional endpoint-dispatch tools alongside the default two. Equivalent to passing `--tools=dynamic`. | — |
+
+## Troubleshooting
+
+### `requires Node >= 22` / `ReferenceError: File is not defined`
+
+The server requires **Node >= 22** (the `execute` sandbox uses `isolated-vm` 6.x). When launched via `pnpm dlx`/`npx`, the package's shebang resolves whatever `node` comes **first** in the MCP client's `PATH` — and clients like Claude Desktop often inherit a `PATH` where an older Node (e.g. from `nvm`) is first. Under that older Node the server now exits immediately with:
+
+```
+[defillama-mcp] @iqai/defillama-mcp requires Node >= 22 (running v18.17.1).
+```
+
+(Older releases instead crashed with a cryptic `ReferenceError: File is not defined` from a transitive dependency.)
+
+**Fix — pin an absolute Node >= 22.** Install the package with a Node 22 toolchain and point the client directly at that Node binary and the installed entry, bypassing `PATH` entirely:
+
+```bash
+# with the Node >= 22 you want to run under:
+npm install -g @iqai/defillama-mcp@latest
+npm root -g        # prints <global>; entry is <global>/@iqai/defillama-mcp/dist/index.js
+which node         # absolute path to your Node >= 22 binary
+```
+
+```json
+{
+  "mcpServers": {
+    "defillama": {
+      "command": "/absolute/path/to/node22/bin/node",
+      "args": [
+        "--no-node-snapshot",
+        "/absolute/path/to/global/node_modules/@iqai/defillama-mcp/dist/index.js"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+Add `"--tools=dynamic"` as a third entry in `args` to enable the dynamic tools.
+
+Alternatively, keep `pnpm dlx` but force a Node >= 22 onto the front of `PATH` via the server's `env`:
+
+```json
+{
+  "mcpServers": {
+    "defillama": {
+      "command": "/absolute/path/to/node22/bin/pnpm",
+      "args": ["dlx", "@iqai/defillama-mcp@latest"],
+      "env": { "PATH": "/absolute/path/to/node22/bin:/usr/local/bin:/usr/bin:/bin" }
+    }
+  }
+}
+```
+
+On **Windows**, use the `;` path separator and Windows-style paths in the `PATH` override (e.g. `"PATH": "C:\\Program Files\\nodejs;C:\\Windows\\System32"`), and point `command` at `node.exe` / `pnpm.cmd`.
+
+The absolute-path approach is recommended — it also avoids a per-launch `dlx` fetch.
 
 ## Architecture
 
