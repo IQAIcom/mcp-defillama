@@ -1,5 +1,11 @@
 # @iqai/defillama-mcp
 
+## 1.0.1
+
+### Patch Changes
+
+- [#11](https://github.com/IQAIcom/mcp-defillama/pull/11) [`4213936`](https://github.com/IQAIcom/mcp-defillama/commit/42139366d86c72d8f35303558f46ccf748b984e6) Thanks [@Aliiiu](https://github.com/Aliiiu)! - Fail fast with a clear, actionable message when the server is launched under Node < 22 instead of crashing with a cryptic `ReferenceError: File is not defined` from undici. A dependency-free preflight in the bin entry checks the Node version before importing anything that loads undici (the FastMCP wiring moves to `server.ts`), and the README gains a Troubleshooting section covering the absolute-Node-path client config.
+
 ## 1.0.0
 
 ### Major Changes
