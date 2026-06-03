@@ -14,6 +14,11 @@ describe("checkNodeVersion", () => {
 		expect(checkNodeVersion("22.0.0")).toEqual({ ok: true });
 	});
 
+	it("handles a bare major with no minor/patch", () => {
+		expect(checkNodeVersion("22")).toEqual({ ok: true });
+		expect(checkNodeVersion("18").ok).toBe(false);
+	});
+
 	it("rejects an older major with an actionable message", () => {
 		const result = checkNodeVersion("v18.17.1");
 		expect(result.ok).toBe(false);

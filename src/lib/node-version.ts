@@ -23,7 +23,9 @@ export function checkNodeVersion(
 	version: string,
 	minMajor: number = MIN_NODE_MAJOR,
 ): NodeVersionCheck {
-	const match = /^v?(\d+)\./.exec(version);
+	// Major followed by a dot (full semver) or the end of the string (bare
+	// major like "22"). An unparseable string yields no match → fail open.
+	const match = /^v?(\d+)(?:\.|$)/.exec(version);
 	if (!match) return { ok: true };
 
 	const major = Number(match[1]);
