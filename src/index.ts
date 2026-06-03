@@ -16,6 +16,9 @@ if (!check.ok) {
 
 const { start } = await import("./server.js");
 await start().catch((error: unknown) => {
-	process.stderr.write(`[defillama-mcp] Unexpected error: ${String(error)}\n`);
+	// console.error prints the full error (incl. stack) to stderr, which is
+	// separate from the stdio JSON-RPC channel — keep the stack for debugging.
+	process.stderr.write("[defillama-mcp] Unexpected error during startup:\n");
+	console.error(error);
 	process.exit(1);
 });

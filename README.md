@@ -167,6 +167,8 @@ Alternatively, keep `pnpm dlx` but force a Node >= 22 onto the front of `PATH` v
 }
 ```
 
+On **Windows**, use the `;` path separator and Windows-style paths in the `PATH` override (e.g. `"PATH": "C:\\Program Files\\nodejs;C:\\Windows\\System32"`), and point `command` at `node.exe` / `pnpm.cmd`.
+
 The absolute-path approach is recommended — it also avoids a per-launch `dlx` fetch.
 
 ## Architecture
