@@ -1,89 +1,89 @@
 {
-  "name": "@iqai/defillama-mcp",
-  "version": "1.0.1",
-  "description": "Standalone MCP server for DefiLlama data access",
-  "main": "dist/index.js",
-  "type": "module",
-  "bin": {
-    "defillama-mcp": "dist/index.js"
-  },
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "prebuild": "pnpm run build:docs && pnpm run build:instructions",
-    "build": "shx rm -rf dist && tsc && shx chmod +x dist/index.js",
-    "build:docs": "tsx scripts/build-docs-index.ts",
-    "build:instructions": "tsx scripts/build-instructions.ts",
-    "prepare": "husky",
-    "pretest": "pnpm run build",
-    "test": "cross-env NODE_OPTIONS=--no-node-snapshot vitest run",
-    "test:watch": "cross-env NODE_OPTIONS=--no-node-snapshot vitest",
-    "watch": "tsc --watch",
-    "start": "node --no-node-snapshot dist/index.js",
-    "format": "biome format . --write",
-    "lint": "biome check . --write",
-    "changeset": "changeset",
-    "version-packages": "pnpm changeset version",
-    "publish-packages": "pnpm build && pnpm changeset publish"
-  },
-  "engines": {
-    "node": ">=22"
-  },
-  "keywords": [
-    "mcp",
-    "defillama",
-    "defi"
-  ],
-  "author": "IQAI",
-  "license": "ISC",
-  "dependencies": {
-    "@iqai/adk": "^0.3.6",
-    "axios": "^1.12.2",
-    "dedent": "^1.7.0",
-    "dotenv": "^17.2.3",
-    "fastmcp": "^3.16.0",
-    "jqts": "^0.0.8",
-    "minisearch": "^7.2.0",
-    "winston": "^3.18.3",
-    "zod": "^4.1.11"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.3.2",
-    "@changesets/changelog-github": "^0.5.0",
-    "@changesets/cli": "^2.29.7",
-    "@types/node": "^24.6.2",
-    "@vitest/coverage-v8": "^4.1.8",
-    "cross-env": "^10.1.0",
-    "husky": "^9.0.0",
-    "lint-staged": "^15.0.0",
-    "msw": "^2.14.6",
-    "shx": "^0.3.4",
-    "tsx": "^4.22.4",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.8"
-  },
-  "optionalDependencies": {
-    "isolated-vm": "^6.1.2"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "isolated-vm",
-      "msw"
-    ]
-  },
-  "lint-staged": {
-    "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
-      "biome check --write --no-errors-on-unmatched"
-    ]
-  },
-  "homepage": "https://github.com/IQAIcom/mcp-defillama#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/IQAIcom/mcp-defillama.git"
-  },
-  "bugs": {
-    "url": "https://github.com/IQAIcom/mcp-defillama/issues"
-  }
+	"name": "@iqai/defillama-mcp",
+	"version": "1.0.1",
+	"description": "Standalone MCP server for DefiLlama data access",
+	"main": "dist/index.js",
+	"type": "module",
+	"bin": {
+		"defillama-mcp": "dist/index.js"
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"prebuild": "pnpm run build:docs && pnpm run build:instructions",
+		"build": "shx rm -rf dist && tsc && shx chmod +x dist/index.js",
+		"build:docs": "tsx scripts/build-docs-index.ts",
+		"build:instructions": "tsx scripts/build-instructions.ts",
+		"prepare": "husky",
+		"pretest": "pnpm run build",
+		"test": "cross-env NODE_OPTIONS=--no-node-snapshot vitest run",
+		"test:watch": "cross-env NODE_OPTIONS=--no-node-snapshot vitest",
+		"watch": "tsc --watch",
+		"start": "node --no-node-snapshot dist/index.js",
+		"format": "biome format . --write",
+		"lint": "biome check . --write",
+		"changeset": "changeset",
+		"version-packages": "pnpm changeset version",
+		"publish-packages": "pnpm build && pnpm changeset publish"
+	},
+	"engines": {
+		"node": ">=22"
+	},
+	"keywords": [
+		"mcp",
+		"defillama",
+		"defi"
+	],
+	"author": "IQAI",
+	"license": "ISC",
+	"dependencies": {
+		"@iqai/adk": "^0.3.6",
+		"axios": "^1.12.2",
+		"dedent": "^1.7.0",
+		"dotenv": "^17.2.3",
+		"fastmcp": "^3.16.0",
+		"jqts": "^0.0.8",
+		"minisearch": "^7.2.0",
+		"winston": "^3.18.3",
+		"zod": "^4.1.11"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.2",
+		"@changesets/changelog-github": "^0.5.0",
+		"@changesets/cli": "^2.29.7",
+		"@types/node": "^24.6.2",
+		"@vitest/coverage-v8": "^4.1.8",
+		"cross-env": "^10.1.0",
+		"husky": "^9.0.0",
+		"lint-staged": "^15.0.0",
+		"msw": "^2.14.6",
+		"shx": "^0.3.4",
+		"tsx": "^4.22.4",
+		"typescript": "^5.9.3",
+		"vitest": "^4.1.8"
+	},
+	"optionalDependencies": {
+		"isolated-vm": "^6.1.2"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild",
+			"isolated-vm",
+			"msw"
+		]
+	},
+	"lint-staged": {
+		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
+			"biome check --write --no-errors-on-unmatched"
+		]
+	},
+	"homepage": "https://github.com/IQOfficial/mcp-defillama#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/IQOfficial/mcp-defillama.git"
+	},
+	"bugs": {
+		"url": "https://github.com/IQOfficial/mcp-defillama/issues"
+	}
 }

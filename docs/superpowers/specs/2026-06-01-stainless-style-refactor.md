@@ -3,7 +3,7 @@
 - **Status:** Draft for review (Phase 0 deliverable)
 - **Date:** 2026-06-01
 - **Author:** Aliu Salaudeen
-- **Reference implementation:** debank-mcp — GitHub [`IQAIcom/mcp-debank`](https://github.com/IQAIcom/mcp-debank), npm `@iqai/mcp-debank@1.0.0` (PR #7 + cleanup PRs #8/#9). On the dev machine it is typically checked out as a sibling of this repo.
+- **Reference implementation:** debank-mcp — GitHub [`IQOfficial/mcp-debank`](https://github.com/IQOfficial/mcp-debank), npm `@iqai/mcp-debank@1.0.0` (PR #7 + cleanup PRs #8/#9). On the dev machine it is typically checked out as a sibling of this repo.
 - **Playbook:** `docs/playbooks/stainless-style-mcp-refactor.md` — **a guide, not a spec.** debank-mcp had a different starting architecture than this project, so we adopt its *principles* (Code Mode) and adapt the layout, namespacing, and phases to fit defillama-mcp's actual code.
 
 This document audits the current `@iqai/defillama-mcp` server, maps the deltas to

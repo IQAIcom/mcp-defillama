@@ -45,7 +45,7 @@ pnpm dlx @iqai/defillama-mcp
 ### Build from Source
 
 ```bash
-git clone https://github.com/IQAIcom/mcp-defillama.git
+git clone https://github.com/IQOfficial/mcp-defillama.git
 cd mcp-defillama
 pnpm install
 pnpm run build
