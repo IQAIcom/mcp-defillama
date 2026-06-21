@@ -15,7 +15,7 @@
 		"build": "shx rm -rf dist && tsc && shx chmod +x dist/index.js",
 		"build:docs": "tsx scripts/build-docs-index.ts",
 		"build:instructions": "tsx scripts/build-instructions.ts",
-		"prepare": "husky",
+		"prepare": "husky && pnpm run build",
 		"pretest": "pnpm run build",
 		"test": "cross-env NODE_OPTIONS=--no-node-snapshot vitest run",
 		"test:watch": "cross-env NODE_OPTIONS=--no-node-snapshot vitest",
