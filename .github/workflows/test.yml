@@ -1,0 +1,49 @@
+# .github/workflows/test.yml
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --no-node-snapshot
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.0.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: isolated-vm smoke
+        run: |
+          node --input-type=module -e "
+          import('isolated-vm').then(async (mod) => {
+            const ivm = mod.default ?? mod;
+            const isolate = new ivm.Isolate({ memoryLimit: 32 });
+            const ctx = await isolate.createContext();
+            const script = await isolate.compileScript('1 + 1');
+            const result = await script.run(ctx, { timeout: 1000, copy: true });
+            if (result !== 2) { console.error('unexpected:', result); process.exit(1); }
+            isolate.dispose();
+            console.log('isolated-vm smoke ok');
+          })
+          "
+
+      - run: pnpm run build
+
+      - name: verify generated files are committed and unmodified
+        run: |
+          git diff --exit-code \
+            src/mcp/search-docs/embedded-index.ts \
+            src/mcp/instructions/instructions.generated.ts
+
+      - run: pnpm lint
+
+      - run: pnpm test
