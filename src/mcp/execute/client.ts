@@ -22,7 +22,15 @@ import {
 } from "./scope.js";
 
 const ABORT_MS = 5_000;
-const AXIOS_MS = 6_000;
+/**
+ * Axios timeout is always `AXIOS_BUFFER_MS` longer than the wrapper abort so
+ * the wrapper fires first (giving us a clean canonical "DefiLlama call timed
+ * out after Ns" message) while axios remains the safety net. When a method
+ * overrides `timeoutMs`, the axios timeout must scale with it — otherwise
+ * the axios call rejects at the default 6 s while the wrapper still has
+ * budget, rendering the override a no-op for direct (non-aggregate) methods.
+ */
+const AXIOS_BUFFER_MS = 1_000;
 
 type Envelope = { ok: true; data: unknown } | { ok: false; error: string };
 
@@ -98,8 +106,12 @@ async function installServiceCall(
 			args: unknown,
 			options: { signal: AbortSignal; timeout: number },
 		) => Promise<unknown>;
+		timeoutMs?: number;
 	},
 ): Promise<void> {
+	const abortMs = spec.timeoutMs ?? ABORT_MS;
+	const axiosMs = abortMs + AXIOS_BUFFER_MS;
+	const abortSeconds = Math.round(abortMs / 1000);
 	const [group, method] = parseQualified(spec.qualified);
 	const ref = new ivm.Reference(async (argsJson: string) => {
 		if (scope.controller.signal.aborted) {
@@ -142,9 +154,11 @@ async function installServiceCall(
 			timer = setTimeout(() => {
 				controller.abort();
 				reject(
-					new Error(`DefiLlama call timed out after 5s: ${spec.qualified}`),
+					new Error(
+						`DefiLlama call timed out after ${abortSeconds}s: ${spec.qualified}`,
+					),
 				);
-			}, ABORT_MS);
+			}, abortMs);
 			timer.unref?.();
 		});
 		try {
@@ -160,7 +174,7 @@ async function installServiceCall(
 			const result = await Promise.race([
 				spec.rawFn(parsed.data, {
 					signal: controller.signal,
-					timeout: AXIOS_MS,
+					timeout: axiosMs,
 				}),
 				abortPromise,
 			]);
@@ -170,7 +184,7 @@ async function installServiceCall(
 			let message: string;
 			if (
 				typeof e.message === "string" &&
-				e.message.startsWith("DefiLlama call timed out after 5s")
+				e.message.startsWith("DefiLlama call timed out after ")
 			) {
 				message = e.message;
 			} else if (scope.controller.signal.aborted) {
@@ -180,7 +194,7 @@ async function installServiceCall(
 				const isAxiosTimeout =
 					e.code === "ECONNABORTED" || e.code === "ETIMEDOUT";
 				if (isAbort || isAxiosTimeout) {
-					message = `DefiLlama call timed out after 5s: ${spec.qualified}`;
+					message = `DefiLlama call timed out after ${abortSeconds}s: ${spec.qualified}`;
 				} else {
 					message = e.message || String(err);
 				}
@@ -246,6 +260,7 @@ export async function installDefillamaClient(
 			qualified: m.qualified,
 			parameters: m.parameters,
 			rawFn,
+			timeoutMs: m.timeoutMs,
 		});
 	}
 
