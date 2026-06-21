@@ -3,7 +3,17 @@ name: test
 
 on:
   push:
+    branches: [main]
   pull_request:
+
+# Cancel in-flight runs when a new push lands on the same branch — saves
+# CI time during iterative review (force-pushes, fixup commits). The
+# `head_ref || ref_name` fallback handles both pull_request runs (where
+# `head_ref` is the source branch) and push-to-main runs (where it's
+# empty, so `ref_name` = `main` is used instead).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   test:
