@@ -5,12 +5,14 @@ on:
   push:
   pull_request:
 
-# Cancel in-flight runs for the same branch/PR when a new push lands. The
-# `head_ref || ref` fallback groups a PR's push + pull_request events under
-# the same key (same source branch) so they cancel each other instead of
-# running twice.
+# Cancel in-flight runs for the same branch/PR when a new push lands. Uses
+# `ref_name` (which strips `refs/heads/`) so the push event and the
+# pull_request event for the same branch normalize to the same group key
+# — `github.ref` on push is `refs/heads/foo` while `github.head_ref` on a
+# PR is `foo`, so without normalization the two events end up in different
+# groups and both run to completion.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
