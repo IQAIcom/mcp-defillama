@@ -97,6 +97,13 @@ export type ToolMetadata = {
 	responseSchema: z.ZodTypeAny;
 	/** Example agent code snippet (one line). */
 	exampleCall: string;
+	/**
+	 * Per-method override of the default 5 s execute-wrapper timeout. The
+	 * underlying axios timeout scales with this value (axiosMs = timeoutMs +
+	 * AXIOS_BUFFER_MS in execute/client.ts), so use this for endpoints whose
+	 * upstream legitimately takes longer than the default budget.
+	 */
+	timeoutMs?: number;
 };
 
 const searchWidthArg = () => z.union([z.string(), z.number()]);
