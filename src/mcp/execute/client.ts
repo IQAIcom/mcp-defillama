@@ -22,7 +22,7 @@ import {
 } from "./scope.js";
 
 const ABORT_MS = 5_000;
-/*
+/**
  * Axios timeout is always `AXIOS_BUFFER_MS` longer than the wrapper abort so
  * the wrapper fires first (giving us a clean canonical "DefiLlama call timed
  * out after Ns" message) while axios remains the safety net. When a method
@@ -106,7 +106,6 @@ async function installServiceCall(
 			args: unknown,
 			options: { signal: AbortSignal; timeout: number },
 		) => Promise<unknown>;
-		/** Per-method override of ABORT_MS for endpoints whose upstream is slow. */
 		timeoutMs?: number;
 	},
 ): Promise<void> {
