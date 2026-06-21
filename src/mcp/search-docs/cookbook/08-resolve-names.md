@@ -17,3 +17,5 @@ async function run(defillama) {
   };
 }
 ```
+
+When the resolver returns `null` — the input is ambiguous, imprecise, or doesn't appear in the catalog under any close spelling — fall back to enumerate-and-filter on the upstream catalog. See the `find-protocol-slug` recipe for the worked pattern (`defillama.protocol.getProtocols()` → filter by `name` substring → read `slug` off the response). The same shape works for chains (`getChains()`) and stablecoins (`getStablecoins()` → `peggedAssets`).

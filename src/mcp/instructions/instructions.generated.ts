@@ -64,6 +64,26 @@ api.llama.fi groups and \`.slug\` for the coins.llama.fi calls. For example:
 then pass \`c.name\` to \`defillama.dex.getDexsOverview({ chain: c.name })\` but
 \`c.slug\` to a \`coins.llama.fi\` call.
 
+## Discovering IDs — resolve or enumerate, don't guess
+
+DefiLlama's protocol slugs (\`aave-v3\`), chain display names (\`Ethereum\`, \`BSC\`),
+and stablecoin IDs (\`2\`) aren't always derivable from the human-facing name —
+versions, separators, and case vary. Don't construct them by lowercasing or
+replacing spaces; that's the wrong reflex.
+
+**The rule: resolve or enumerate before invoking.**
+
+1. Try \`defillama.resolveProtocol("Aave V3")\` / \`defillama.resolveChain("BSC")\` /
+   \`defillama.resolveStablecoin("USDC")\` first. These match the upstream catalog
+   case-insensitively (with substring fallback for chains) and return the
+   canonical identifier — or \`null\` when the input is ambiguous or imprecise.
+2. If the resolver returns \`null\`, enumerate the upstream catalog and filter by
+   \`name\` — e.g. \`defillama.protocol.getProtocols()\` for protocols. See the
+   \`find-protocol-slug\` cookbook recipe (via \`search_docs\`) for the worked
+   pattern.
+3. Read the slug/id off the response — never transform a display name into a
+   slug by hand.
+
 ## Price coin format — \`chain:address\`
 
 The \`price\` group identifies tokens as \`chain:address\`, using the lowercase
