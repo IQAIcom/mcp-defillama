@@ -22,7 +22,7 @@
 		"watch": "tsc --watch",
 		"start": "node --no-node-snapshot dist/index.js",
 		"format": "biome format . --write",
-		"lint": "biome check . --write",
+		"lint": "biome check .",
 		"changeset": "changeset",
 		"version-packages": "pnpm changeset version",
 		"publish-packages": "pnpm build && pnpm changeset publish"
