@@ -14,7 +14,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 22.0.0 # Using a version compatible with pnpm
+          node-version: 22
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
