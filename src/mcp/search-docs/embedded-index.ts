@@ -25,7 +25,7 @@ export const ENTRIES: IndexEntry[] = [
 		name: "defillama_get_chains",
 		qualified: "defillama.protocol.getChains",
 		description:
-			"List every chain DefiLlama tracks, each with its current TVL. Returns the full array (sort/slice in your execute() script). The chain display names here (e.g. 'Ethereum', 'Arbitrum') feed api.llama.fi endpoints; lowercase the slug (e.g. 'ethereum') for coins.llama.fi price/block calls.",
+			"List every chain DefiLlama tracks, each with its current TVL. Returns the full array (sort/slice in your execute() script). This is the canonical chain catalog — read the `name` field for api.llama.fi endpoints (case-sensitive display name) and lowercase that same value for coins.llama.fi price/block calls. Prefer `defillama.resolveChain(input)` for translating a human input to the right form; fall back to enumerating this list when the resolver returns null.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
@@ -53,56 +53,57 @@ export const ENTRIES: IndexEntry[] = [
 		name: "defillama_get_protocol",
 		qualified: "defillama.protocol.getProtocol",
 		description:
-			"Fetch detailed TVL data for a single DeFi protocol, including per-chain TVL breakdowns and historical series. Pass the protocol slug (e.g. 'lido', 'aave-v3'); resolve human-friendly names to slugs with the resolver/catalog before calling.",
+			"Fetch detailed TVL data for a single DeFi protocol, including per-chain TVL breakdowns and historical series. Pass the canonical protocol slug from the DefiLlama catalog. Slugs are kebab-case lowercase with version suffixes preserved and are NOT derivable from display names — discover via `defillama.resolveProtocol(name)` or by enumerating `defillama.protocol.getProtocols()` and filtering on `name` (see the find-protocol-slug recipe). Don't construct the slug by transforming a display name.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				protocol: {
 					description:
-						"Protocol slug as used by DefiLlama (e.g. 'lido', 'uniswap', 'aave-v3', 'makerdao'). Resolve display names to slugs deterministically via the catalog before calling.",
+						"Canonical protocol slug from the DefiLlama catalog (kebab-case). Get the exact value via `defillama.resolveProtocol(name)` or by enumerating `defillama.protocol.getProtocols()` and filtering on `name` — never construct it by transforming a display name.",
 					type: "string",
 				},
 			},
 			required: ["protocol"],
 			additionalProperties: false,
 		},
-		exampleCall: "await defillama.protocol.getProtocol({protocol: 'lido'})",
+		exampleCall:
+			"const slug = await defillama.resolveProtocol(name); await defillama.protocol.getProtocol({protocol: slug})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_historical_chain_tvl",
 		qualified: "defillama.protocol.getHistoricalChainTvl",
 		description:
-			"Fetch the historical TVL time series for a chain, or aggregated across all chains when `chain` is omitted. Returns the full series (slice the tail in your execute() script). Use the chain display name from getChains() (e.g. 'Ethereum'), which feeds the api.llama.fi endpoint.",
+			"Fetch the historical TVL time series for a chain, or aggregated across all chains when `chain` is omitted. Returns the full series (slice the tail in your execute() script). The api.llama.fi endpoint expects the chain DISPLAY NAME (the `.name` form, not the lowercase coins-API slug) — get it via `defillama.resolveChain(input).name` or by reading the `name` field off `defillama.protocol.getChains()`. Case matters: some chains use all-caps display names.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				chain: {
 					description:
-						"Chain display name (e.g. 'Ethereum', 'Arbitrum', 'Polygon'). If omitted, returns aggregated historical TVL across all chains combined.",
+						"Chain display name as returned by `defillama.resolveChain(input).name` or the `name` field of `defillama.protocol.getChains()`. Case-sensitive. If omitted, returns aggregated historical TVL across all chains combined.",
 					type: "string",
 				},
 			},
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.protocol.getHistoricalChainTvl({chain: 'Ethereum'})",
+			"const {name} = await defillama.resolveChain(input); await defillama.protocol.getHistoricalChainTvl({chain: name})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_dex_summary",
 		qualified: "defillama.dex.getDexSummary",
 		description:
-			"Fetch detailed DEX trading-volume data for a single protocol, including totals and (optionally) the volume chart series. Pass the protocol slug; resolve display names to slugs via the catalog first.",
+			"Fetch detailed DEX trading-volume data for a single DEX protocol, including totals and (optionally) the volume chart series. Pass the canonical DEX protocol slug from the DefiLlama catalog. Slugs are kebab-case and version-suffixed and NOT derivable from display names — discover via `defillama.resolveProtocol(name)` or by enumerating `defillama.dex.getDexsOverview().protocols` and filtering on `name`. Don't construct the slug by transforming a display name.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				protocol: {
 					description:
-						"DEX protocol slug (e.g. 'uniswap', 'pancakeswap', 'curve-dex'). Resolve display names to slugs deterministically via the catalog before calling.",
+						"Canonical DEX protocol slug from the DefiLlama catalog (kebab-case). Get the exact value via `defillama.resolveProtocol(name)` or by reading the `slug` field off `defillama.dex.getDexsOverview().protocols` — never construct it by transforming a display name.",
 					type: "string",
 				},
 				excludeTotalDataChart: {
@@ -119,21 +120,22 @@ export const ENTRIES: IndexEntry[] = [
 			required: ["protocol"],
 			additionalProperties: false,
 		},
-		exampleCall: "await defillama.dex.getDexSummary({protocol: 'uniswap'})",
+		exampleCall:
+			"const slug = await defillama.resolveProtocol(name); await defillama.dex.getDexSummary({protocol: slug})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_dexs_overview",
 		qualified: "defillama.dex.getDexsOverview",
 		description:
-			"Fetch a DEX volume overview across all DEXs, or scoped to one chain when `chain` is provided. Returns the full `protocols` array (sort/slice/field-pick in your execute() script). Use the chain display name (e.g. 'Ethereum').",
+			"Fetch a DEX volume overview across all DEXs, or scoped to one chain when `chain` is provided. Returns the full `protocols` array (sort/slice/field-pick in your execute() script). Use the chain DISPLAY NAME from `defillama.resolveChain(input).name` (case-sensitive).",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				chain: {
 					description:
-						"Chain display name (e.g. 'Ethereum', 'BSC', 'Arbitrum'). If omitted, returns the global overview of all DEXs.",
+						"Chain display name as returned by `defillama.resolveChain(input).name` or the `name` field of `defillama.protocol.getChains()`. Case-sensitive. If omitted, returns the global overview of all DEXs.",
 					type: "string",
 				},
 				excludeTotalDataChart: {
@@ -149,21 +151,22 @@ export const ENTRIES: IndexEntry[] = [
 			},
 			additionalProperties: false,
 		},
-		exampleCall: "await defillama.dex.getDexsOverview({chain: 'Ethereum'})",
+		exampleCall:
+			"const {name} = await defillama.resolveChain(input); await defillama.dex.getDexsOverview({chain: name})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_fees_summary",
 		qualified: "defillama.fees.getFeesSummary",
 		description:
-			"Fetch detailed fees/revenue metrics for a single protocol. Pass the protocol slug; resolve display names to slugs via the catalog first. Use `dataType` to choose which metric series to return.",
+			"Fetch detailed fees/revenue metrics for a single protocol. Pass the canonical fees-protocol slug from the DefiLlama catalog. The fees catalog often uses version-suffixed slugs (e.g. a single display name like 'Uniswap' maps to multiple fees-tracked deployments like `uniswap-v2`, `uniswap-v3`, `uniswap-labs`), so discovery is required — use `defillama.resolveProtocol(name)` or enumerate `defillama.fees.getFeesOverview().protocols` and filter on `name`. Don't pass an unversioned display-name guess. Use `dataType` to choose which metric series to return.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				protocol: {
 					description:
-						"Protocol slug (e.g. 'uniswap', 'aave'). Resolve display names to slugs deterministically via the catalog before calling.",
+						"Canonical fees-protocol slug from the DefiLlama catalog (kebab-case, often version-suffixed). Get the exact value via `defillama.resolveProtocol(name)` or by reading the `slug` field off `defillama.fees.getFeesOverview().protocols` — never construct it by transforming a display name.",
 					type: "string",
 				},
 				dataType: {
@@ -187,21 +190,21 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.fees.getFeesSummary({protocol: 'uniswap', dataType: 'dailyRevenue'})",
+			"const slug = await defillama.resolveProtocol(name); await defillama.fees.getFeesSummary({protocol: slug, dataType: 'dailyRevenue'})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_fees_overview",
 		qualified: "defillama.fees.getFeesOverview",
 		description:
-			"Fetch a fees/revenue overview across all protocols, or scoped to one chain when `chain` is provided. Returns the full `protocols` array (sort/slice/field-pick in your execute() script). Use the chain display name (e.g. 'Ethereum').",
+			"Fetch a fees/revenue overview across all protocols, or scoped to one chain when `chain` is provided. Returns the full `protocols` array (sort/slice/field-pick in your execute() script). Use the chain DISPLAY NAME from `defillama.resolveChain(input).name` (case-sensitive). This is also the canonical source for discovering valid fees-protocol slugs — read the `slug` field off each entry.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				chain: {
 					description:
-						"Chain display name (e.g. 'Ethereum', 'Polygon', 'BSC'). If omitted, includes all chains.",
+						"Chain display name as returned by `defillama.resolveChain(input).name` or the `name` field of `defillama.protocol.getChains()`. Case-sensitive. If omitted, includes all chains.",
 					type: "string",
 				},
 				dataType: {
@@ -224,21 +227,21 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.fees.getFeesOverview({chain: 'Ethereum', dataType: 'dailyFees'})",
+			"const {name} = await defillama.resolveChain(input); await defillama.fees.getFeesOverview({chain: name, dataType: 'dailyFees'})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_options_summary",
 		qualified: "defillama.options.getOptionsSummary",
 		description:
-			"Fetch detailed options-protocol volume data for a single protocol. Pass the protocol slug; resolve display names to slugs via the catalog first. Use `dataType` to choose premium vs notional volume.",
+			"Fetch detailed options-protocol volume data for a single protocol. Pass the canonical options-protocol slug from the DefiLlama catalog — discover via `defillama.resolveProtocol(name)` or by enumerating `defillama.options.getOptionsOverview().protocols` and filtering on `name`. Don't construct the slug by transforming a display name. Use `dataType` to choose premium vs notional volume.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				protocol: {
 					description:
-						"Options protocol slug (e.g. 'lyra', 'hegic', 'aevo'). Resolve display names to slugs deterministically via the catalog before calling.",
+						"Canonical options-protocol slug from the DefiLlama catalog (kebab-case). Get the exact value via `defillama.resolveProtocol(name)` or by reading the `slug` field off `defillama.options.getOptionsOverview().protocols` — never construct it by transforming a display name.",
 					type: "string",
 				},
 				dataType: {
@@ -252,21 +255,21 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.options.getOptionsSummary({protocol: 'lyra'})",
+			"const slug = await defillama.resolveProtocol(name); await defillama.options.getOptionsSummary({protocol: slug})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_options_overview",
 		qualified: "defillama.options.getOptionsOverview",
 		description:
-			"Fetch an options-volume overview across all options protocols, or scoped to one chain when `chain` is provided. Returns the full `protocols` array (sort/slice in your execute() script). Use the chain display name (e.g. 'Ethereum').",
+			"Fetch an options-volume overview across all options protocols, or scoped to one chain when `chain` is provided. Returns the full `protocols` array (sort/slice in your execute() script). Use the chain DISPLAY NAME from `defillama.resolveChain(input).name` (case-sensitive). This is also the canonical source for discovering valid options-protocol slugs — read the `slug` field off each entry.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				chain: {
 					description:
-						"Chain display name (e.g. 'Ethereum', 'Arbitrum', 'Optimism'). If omitted, returns the global overview of all options protocols.",
+						"Chain display name as returned by `defillama.resolveChain(input).name` or the `name` field of `defillama.protocol.getChains()`. Case-sensitive. If omitted, returns the global overview of all options protocols.",
 					type: "string",
 				},
 				dataType: {
@@ -289,7 +292,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.options.getOptionsOverview({chain: 'Ethereum'})",
+			"const {name} = await defillama.resolveChain(input); await defillama.options.getOptionsOverview({chain: name})",
 	},
 	{
 		kind: "method",
@@ -330,19 +333,19 @@ export const ENTRIES: IndexEntry[] = [
 		name: "defillama_get_stablecoin_charts",
 		qualified: "defillama.stablecoin.getStablecoinCharts",
 		description:
-			"Fetch the historical stablecoin market-cap chart, optionally scoped to a chain and/or a single stablecoin. Returns the full series (slice the tail in your execute() script). Use the chain display name (e.g. 'Ethereum'); omit `chain` for global aggregated data.",
+			"Fetch the historical stablecoin market-cap chart, optionally scoped to a chain and/or a single stablecoin. Returns the full series (slice the tail in your execute() script). Use the chain DISPLAY NAME from `defillama.resolveChain(input).name`; omit `chain` for global aggregated data. Stablecoin IDs are numeric and not derivable from symbols — discover via `defillama.resolveStablecoin(symbol)` or by reading the `id` field off `defillama.stablecoin.getStablecoins().peggedAssets`.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				chain: {
 					description:
-						"Chain display name to filter by (e.g. 'Ethereum', 'Polygon'). If omitted, returns global aggregated data across all chains.",
+						"Chain display name as returned by `defillama.resolveChain(input).name` or the `name` field of `defillama.protocol.getChains()`. Case-sensitive. If omitted, returns global aggregated data across all chains.",
 					type: "string",
 				},
 				stablecoin: {
 					description:
-						"Stablecoin numeric ID (e.g. 1 for USDT) to filter to a single asset. Resolve symbols/names to IDs deterministically via the catalog before calling.",
+						"Numeric stablecoin ID (a string of digits) as assigned by DefiLlama. Get it via `defillama.resolveStablecoin(symbol)` or by reading the `id` field off `defillama.stablecoin.getStablecoins().peggedAssets` — never invent it from a symbol or name.",
 					anyOf: [
 						{
 							type: "integer",
@@ -358,7 +361,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.stablecoin.getStablecoinCharts({chain: 'Ethereum'})",
+			"const {name} = await defillama.resolveChain(input); const id = await defillama.resolveStablecoin(symbol); await defillama.stablecoin.getStablecoinCharts({chain: name, stablecoin: id})",
 	},
 	{
 		kind: "method",
@@ -379,14 +382,14 @@ export const ENTRIES: IndexEntry[] = [
 		name: "defillama_get_prices_current_coins",
 		qualified: "defillama.price.getCurrentPrices",
 		description:
-			"Fetch current token prices. Tokens are identified in the format `{chain}:{address}` with a lowercase chain slug (e.g. 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7'). Comma-separate multiple tokens. CoinGecko IDs use the 'coingecko:<id>' prefix.",
+			"Fetch current token prices. Tokens are identified in the format `${chainSlug}:${tokenAddress}` — get `chainSlug` from `defillama.resolveChain(input).slug` (the LOWERCASE coins-API form, not the display name), and `tokenAddress` from the user, a wallet, or an on-chain explorer (there is no DefiLlama-side address discovery). Comma-separate multiple tokens. CoinGecko IDs use the `coingecko:<id>` prefix as a separate well-known shorthand.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				coins: {
 					description:
-						"Comma-separated tokens in `{chain}:{address}` format with a lowercase chain slug (e.g. 'ethereum:0xdac1...,bsc:0x55d3...'), or 'coingecko:<id>' for well-known coins.",
+						"Comma-separated tokens in `${chainSlug}:${tokenAddress}` format. `chainSlug` comes from `defillama.resolveChain(input).slug`; `tokenAddress` is supplied by the user/caller. Native coins can use `coingecko:<id>` instead.",
 					type: "string",
 				},
 				searchWidth: {
@@ -406,21 +409,21 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.price.getCurrentPrices({coins: 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7'})",
+			"const {slug} = await defillama.resolveChain(input); await defillama.price.getCurrentPrices({coins: `${slug}:${tokenAddress}`})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_prices_first_coins",
 		qualified: "defillama.price.getFirstPrices",
 		description:
-			"Fetch the first-ever recorded price for each token. Tokens are identified in the format `{chain}:{address}` with a lowercase chain slug (e.g. 'ethereum:0xdac1...'). Comma-separate multiple tokens. Useful for when a token was first listed/tracked.",
+			"Fetch the first-ever recorded price for each token. Tokens are identified in the format `${chainSlug}:${tokenAddress}` — get `chainSlug` from `defillama.resolveChain(input).slug` and `tokenAddress` from the user, a wallet, or an on-chain explorer. Comma-separate multiple tokens. Useful for when a token was first listed/tracked.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				coins: {
 					description:
-						"Comma-separated tokens in `{chain}:{address}` format with a lowercase chain slug (e.g. 'ethereum:0xdac1...,bsc:0x55d3...').",
+						"Comma-separated tokens in `${chainSlug}:${tokenAddress}` format. `chainSlug` comes from `defillama.resolveChain(input).slug`; `tokenAddress` is supplied by the user/caller.",
 					type: "string",
 				},
 			},
@@ -428,21 +431,21 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.price.getFirstPrices({coins: 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7'})",
+			"const {slug} = await defillama.resolveChain(input); await defillama.price.getFirstPrices({coins: `${slug}:${tokenAddress}`})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_batch_historical",
 		qualified: "defillama.price.getBatchHistorical",
 		description:
-			"Fetch historical prices for many tokens at many timestamps in one call. `coins` is an object mapping `{chain}:{address}` (lowercase chain slug) to an array of Unix timestamps in seconds. A pre-encoded string is also accepted.",
+			"Fetch historical prices for many tokens at many timestamps in one call. `coins` is an object mapping `${chainSlug}:${tokenAddress}` to an array of Unix timestamps in seconds. Get each `chainSlug` via `defillama.resolveChain(input).slug` and each `tokenAddress` from the user/wallet/explorer. A pre-encoded string is also accepted.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				coins: {
 					description:
-						"Object mapping `{chain}:{address}` (lowercase chain slug) to an array of Unix timestamps in seconds, e.g. { 'ethereum:0xdac1...': [1648680149] } or { 'coingecko:bitcoin': [1648680149, 1648766549] }. A pre-encoded string is also accepted.",
+						"Object mapping `${chainSlug}:${tokenAddress}` to an array of Unix timestamps in seconds. `chainSlug` comes from `defillama.resolveChain(input).slug`; `tokenAddress` is supplied by the user/caller. Native coins can use `coingecko:<id>`. A pre-encoded string is also accepted.",
 					anyOf: [
 						{
 							type: "string",
@@ -490,26 +493,26 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.price.getBatchHistorical({coins: {'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7': [1648680149]}})",
+			"const {slug} = await defillama.resolveChain(input); await defillama.price.getBatchHistorical({coins: {[`${slug}:${tokenAddress}`]: [timestamp]}})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_historical_prices_by_contract",
 		qualified: "defillama.price.getHistoricalPrices",
 		description:
-			"Fetch token prices at a single point in time. Tokens are identified in the format `{chain}:{address}` with a lowercase chain slug (e.g. 'ethereum:0xdac1...'). Comma-separate multiple tokens. `timestamp` accepts Unix seconds or an ISO 8601 date string.",
+			"Fetch token prices at a single point in time. Tokens are identified in the format `${chainSlug}:${tokenAddress}` — get `chainSlug` from `defillama.resolveChain(input).slug` and `tokenAddress` from the user/wallet/explorer. Comma-separate multiple tokens. `timestamp` accepts Unix seconds or an ISO 8601 date string.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				coins: {
 					description:
-						"Comma-separated tokens in `{chain}:{address}` format with a lowercase chain slug (e.g. 'ethereum:0xdac1...,bsc:0x55d3...').",
+						"Comma-separated tokens in `${chainSlug}:${tokenAddress}` format. `chainSlug` comes from `defillama.resolveChain(input).slug`; `tokenAddress` is supplied by the user/caller.",
 					type: "string",
 				},
 				timestamp: {
 					description:
-						"Point in time to query. Unix timestamp in seconds (e.g. 1705320000) or ISO 8601 (e.g. '2024-01-15T12:00:00Z').",
+						"Point in time to query. Unix timestamp in seconds (e.g. `Math.floor(targetDate.getTime()/1000)`) or ISO 8601 (e.g. '2024-01-15T12:00:00Z').",
 					anyOf: [
 						{
 							type: "integer",
@@ -539,21 +542,21 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.price.getHistoricalPrices({coins: 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7', timestamp: 1705320000})",
+			"const {slug} = await defillama.resolveChain(input); await defillama.price.getHistoricalPrices({coins: `${slug}:${tokenAddress}`, timestamp})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_percentage_coins",
 		qualified: "defillama.price.getPercentageChange",
 		description:
-			"Fetch the percentage price change for tokens over a period, looking backward (default) or forward. Tokens are `{chain}:{address}` with a lowercase chain slug (e.g. 'ethereum:0xdac1...'). Comma-separate multiple tokens.",
+			"Fetch the percentage price change for tokens over a period, looking backward (default) or forward. Tokens are `${chainSlug}:${tokenAddress}` — get `chainSlug` from `defillama.resolveChain(input).slug` and `tokenAddress` from the user/wallet/explorer. Comma-separate multiple tokens.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				coins: {
 					description:
-						"Comma-separated tokens in `{chain}:{address}` format with a lowercase chain slug (e.g. 'ethereum:0xdac1...,bsc:0x55d3...').",
+						"Comma-separated tokens in `${chainSlug}:${tokenAddress}` format. `chainSlug` comes from `defillama.resolveChain(input).slug`; `tokenAddress` is supplied by the user/caller.",
 					type: "string",
 				},
 				period: {
@@ -586,21 +589,21 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.price.getPercentageChange({coins: 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7', period: '7d'})",
+			"const {slug} = await defillama.resolveChain(input); await defillama.price.getPercentageChange({coins: `${slug}:${tokenAddress}`, period: '7d'})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_chart_coins",
 		qualified: "defillama.price.getPriceChart",
 		description:
-			"Fetch a historical price chart (time series) for one or more tokens. Tokens are `{chain}:{address}` with a lowercase chain slug (e.g. 'ethereum:0xdac1...'); CoinGecko IDs use 'coingecko:<id>'. Control the range and granularity with start/end/span/period.",
+			"Fetch a historical price chart (time series) for one or more tokens. Tokens are `${chainSlug}:${tokenAddress}` — get `chainSlug` from `defillama.resolveChain(input).slug` and `tokenAddress` from the user/wallet/explorer. Native coins can use `coingecko:<id>`. Control the range and granularity with start/end/span/period.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				coins: {
 					description:
-						"Comma-separated tokens in `{chain}:{address}` format with a lowercase chain slug (e.g. 'ethereum:0xdac1...,bsc:0x55d3...'), or 'coingecko:<id>'.",
+						"Comma-separated tokens in `${chainSlug}:${tokenAddress}` format. `chainSlug` comes from `defillama.resolveChain(input).slug`; `tokenAddress` is supplied by the user/caller. Native coins can use `coingecko:<id>`.",
 					type: "string",
 				},
 				start: {
@@ -662,7 +665,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.price.getPriceChart({coins: 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7', span: 10, period: '1d'})",
+			"const {slug} = await defillama.resolveChain(input); await defillama.price.getPriceChart({coins: `${slug}:${tokenAddress}`, span: 10, period: '1d'})",
 	},
 	{
 		kind: "method",
@@ -683,14 +686,14 @@ export const ENTRIES: IndexEntry[] = [
 		name: "defillama_get_historical_pool_data",
 		qualified: "defillama.yield.getHistoricalPoolData",
 		description:
-			"Fetch the historical APY/TVL series for a single yield pool. Returns the full series (slice the tail in your execute() script). Get the pool UUID from getLatestPools first.",
+			"Fetch the historical APY/TVL series for a single yield pool. Returns the full series (slice the tail in your execute() script). Pool UUIDs are opaque DefiLlama identifiers and not derivable from any human-readable field — always discover by calling `defillama.yield.getLatestPools()` first and reading the `pool` field off the entry that matches your `project` + `symbol` + `chain`.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				pool: {
 					description:
-						"Pool UUID as returned in the `pool` field of getLatestPools (e.g. '747c1d2a-c668-4682-b9f9-296708a3dd90').",
+						"Opaque UUID assigned by DefiLlama to a yield pool, as returned in the `pool` field of `defillama.yield.getLatestPools().data`. There is no way to construct this from project/symbol/chain — discover it from the pool list first.",
 					type: "string",
 				},
 			},
@@ -698,26 +701,26 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.yield.getHistoricalPoolData({pool: '747c1d2a-c668-4682-b9f9-296708a3dd90'})",
+			"const pools = await defillama.yield.getLatestPools(); const id = pools.data.find(p => /* match on project/symbol/chain */).pool; await defillama.yield.getHistoricalPoolData({pool: id})",
 	},
 	{
 		kind: "method",
 		name: "defillama_get_blockchain_timestamp",
 		qualified: "defillama.blockchain.getBlockAtTimestamp",
 		description:
-			"Resolve the block (height + timestamp) closest to a given time on a chain. Essential for historical queries that need a block number. Use the lowercase chain slug (e.g. 'ethereum') for this coins.llama.fi endpoint. `timestamp` accepts Unix seconds or an ISO 8601 date string.",
+			"Resolve the block (height + timestamp) closest to a given time on a chain. Essential for historical queries that need a block number. This is a coins.llama.fi endpoint and expects the LOWERCASE chain SLUG (not the display name) — get it from `defillama.resolveChain(input).slug`. `timestamp` accepts Unix seconds or an ISO 8601 date string.",
 		params: {
 			$schema: "https://json-schema.org/draft/2020-12/schema",
 			type: "object",
 			properties: {
 				chain: {
 					description:
-						"Lowercase chain slug for the coins.llama.fi endpoint (e.g. 'ethereum', 'polygon', 'arbitrum').",
+						"Lowercase chain slug for the coins.llama.fi endpoint, as returned by `defillama.resolveChain(input).slug`. This is the chain display name lowercased — do not pass the display-name form here.",
 					type: "string",
 				},
 				timestamp: {
 					description:
-						"Time to query. Unix timestamp in seconds (e.g. 1640000000) or ISO 8601 date string (e.g. '2024-01-15T10:30:00Z').",
+						"Time to query. Unix timestamp in seconds (e.g. `Math.floor(Date.now()/1000)`) or ISO 8601 date string (e.g. '2024-01-15T10:30:00Z').",
 					anyOf: [
 						{
 							type: "integer",
@@ -735,7 +738,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"await defillama.blockchain.getBlockAtTimestamp({chain: 'ethereum', timestamp: 1640000000})",
+			"const {slug} = await defillama.resolveChain(input); await defillama.blockchain.getBlockAtTimestamp({chain: slug, timestamp: Math.floor(Date.now()/1000)})",
 	},
 	{
 		kind: "prose",
@@ -749,7 +752,7 @@ export const ENTRIES: IndexEntry[] = [
 		id: "cookbook:02-dex-volume-leaderboard.md",
 		title: "DEX volume leaderboard for a chain",
 		content:
-			'# DEX volume leaderboard for a chain\n\nBuilds a leaderboard of the highest-volume DEXs on a single chain using 24h volume. `getDexsOverview` expects the chain **display name** (e.g. `\'Ethereum\'`) for api.llama.fi — use `defillama.resolveChain(...).name` to turn a user alias like "eth" into the correct display name first. The DEX rows live under `.protocols`.\n\n```js\nasync function run(defillama) {\n  const chain = await defillama.resolveChain("Ethereum"); // {name, slug}\n  const overview = await defillama.dex.getDexsOverview({ chain: chain.name });\n  return (overview.protocols ?? [])\n    .sort((a, b) => (b.total24h ?? 0) - (a.total24h ?? 0))\n    .slice(0, 10)\n    .map((d) => ({ name: d.name, volume24h: d.total24h }));\n}\n```\n',
+			'# DEX volume leaderboard for a chain\n\nBuilds a leaderboard of the highest-volume DEXs on a single chain using 24h volume. `getDexsOverview` expects the chain **display name** for api.llama.fi — use `defillama.resolveChain(chainInput).name` to turn a user-supplied alias (anything from "eth" to "Ethereum") into the canonical display name first. The DEX rows live under `.protocols`.\n\n```js\nasync function run(defillama, { chainInput }) {\n  const chain = await defillama.resolveChain(chainInput); // { name, slug }\n  const overview = await defillama.dex.getDexsOverview({ chain: chain.name });\n  return (overview.protocols ?? [])\n    .sort((a, b) => (b.total24h ?? 0) - (a.total24h ?? 0))\n    .slice(0, 10)\n    .map((d) => ({ name: d.name, volume24h: d.total24h }));\n}\n```\n',
 	},
 	{
 		kind: "prose",
@@ -770,14 +773,14 @@ export const ENTRIES: IndexEntry[] = [
 		id: "cookbook:05-token-price-history.md",
 		title: "Token price history via chain:address",
 		content:
-			'# Token price history via chain:address\n\nFetches a historical price chart for a token. The coins API identifies tokens as `{chainSlug}:{address}` with a **lowercase** chain slug — use `defillama.resolveChain(...).slug` to build the key (the `.slug` form feeds coins.llama.fi, not the `.name` form). `getPriceChart` returns a series keyed by the same coins identifier under `.coins[key].prices`.\n\n```js\nasync function run(defillama) {\n  const chain = await defillama.resolveChain("Ethereum"); // {name, slug:"ethereum"}\n  const key = chain.slug + ":0xdac17f958d2ee523a2206206994597c13d831ec7"; // USDT\n  const chart = await defillama.price.getPriceChart({\n    coins: key,\n    span: 30,\n    period: "1d",\n  });\n  const series = chart.coins?.[key]?.prices ?? [];\n  return { coin: key, points: series.length, prices: series };\n}\n```\n',
+			'# Token price history via chain:address\n\nFetches a historical price chart for a token. The coins API identifies tokens as `${chainSlug}:${tokenAddress}` with a **lowercase** chain slug — use `defillama.resolveChain(input).slug` to build the key (the `.slug` form feeds coins.llama.fi, not the `.name` form). The `tokenAddress` is supplied by the user/caller (from a wallet, an explorer, or a prior on-chain lookup) — there is no DefiLlama-side address discovery. `getPriceChart` returns a series keyed by the same coins identifier under `.coins[key].prices`.\n\n```js\nasync function run(defillama, { chainInput, tokenAddress }) {\n  const chain = await defillama.resolveChain(chainInput); // { name, slug }\n  const key = `${chain.slug}:${tokenAddress}`;\n  const chart = await defillama.price.getPriceChart({\n    coins: key,\n    span: 30,\n    period: "1d",\n  });\n  const series = chart.coins?.[key]?.prices ?? [];\n  return { coin: key, points: series.length, prices: series };\n}\n```\n',
 	},
 	{
 		kind: "prose",
 		id: "cookbook:06-block-at-timestamp-tvl.md",
 		title: "Correlate a block at a timestamp with historical chain TVL",
 		content:
-			'# Correlate a block at a timestamp with historical chain TVL\n\nResolves the block closest to a given timestamp, then pulls the historical TVL series for the same chain so you can correlate on-chain state with TVL. Note the two host conventions: `getBlockAtTimestamp` is a coins.llama.fi call and wants the **lowercase slug** (`chain.slug`), while `getHistoricalChainTvl` is an api.llama.fi call and wants the **display name** (`chain.name`).\n\n```js\nasync function run(defillama) {\n  const chain = await defillama.resolveChain("Ethereum"); // {name:"Ethereum", slug:"ethereum"}\n  const timestamp = 1700000000;\n\n  const block = await defillama.blockchain.getBlockAtTimestamp({\n    chain: chain.slug,\n    timestamp,\n  });\n  const tvl = await defillama.protocol.getHistoricalChainTvl({\n    chain: chain.name,\n  });\n\n  return {\n    height: block.height,\n    blockTimestamp: block.timestamp,\n    tvlPoints: tvl.length,\n    latestTvl: tvl[tvl.length - 1],\n  };\n}\n```\n',
+			"# Correlate a block at a timestamp with historical chain TVL\n\nResolves the block closest to a given timestamp, then pulls the historical TVL series for the same chain so you can correlate on-chain state with TVL. Note the two host conventions: `getBlockAtTimestamp` is a coins.llama.fi call and wants the **lowercase slug** (`chain.slug`), while `getHistoricalChainTvl` is an api.llama.fi call and wants the **display name** (`chain.name`). Both come from the same `resolveChain` call.\n\n```js\nasync function run(defillama, { chainInput, timestamp }) {\n  const chain = await defillama.resolveChain(chainInput); // { name, slug }\n\n  const block = await defillama.blockchain.getBlockAtTimestamp({\n    chain: chain.slug,\n    timestamp,\n  });\n  const tvl = await defillama.protocol.getHistoricalChainTvl({\n    chain: chain.name,\n  });\n\n  return {\n    height: block.height,\n    blockTimestamp: block.timestamp,\n    tvlPoints: tvl.length,\n    latestTvl: tvl[tvl.length - 1],\n  };\n}\n```\n",
 	},
 	{
 		kind: "prose",
@@ -791,13 +794,13 @@ export const ENTRIES: IndexEntry[] = [
 		id: "cookbook:08-resolve-names.md",
 		title: "Resolve chain, protocol, and stablecoin names",
 		content:
-			'# Resolve chain, protocol, and stablecoin names\n\nTranslates human-facing names into the exact identifiers each DefiLlama endpoint expects, deterministically (no LLM). The key convention: a chain resolves to BOTH a `name` and a `slug` — use `.name` for api.llama.fi group endpoints (protocols, dexs, fees, historical chain TVL) and `.slug` for coins.llama.fi calls (prices, block-at-timestamp). Protocols resolve to a slug string; stablecoins resolve to a numeric id string.\n\n```js\nasync function run(defillama) {\n  const chain = await defillama.resolveChain("BSC"); // {name:"BSC", slug:"bsc"}\n  const protocol = await defillama.resolveProtocol("Lido"); // "lido"\n  const stablecoin = await defillama.resolveStablecoin("USDC"); // e.g. "2"\n\n  // Use .name for api.llama.fi groups, .slug for coins/price endpoints.\n  return {\n    chainName: chain?.name, // -> getHistoricalChainTvl({chain: chain.name})\n    chainSlug: chain?.slug, // -> getBlockAtTimestamp({chain: chain.slug})\n    protocolSlug: protocol, // -> getProtocol({protocol})\n    stablecoinId: stablecoin, // -> getStablecoinCharts({stablecoin})\n  };\n}\n```\n\nWhen the resolver returns `null` — the input is ambiguous, imprecise, or doesn\'t appear in the catalog under any close spelling — fall back to enumerate-and-filter on the upstream catalog. See the `find-protocol-slug` recipe for the worked pattern (`defillama.protocol.getProtocols()` → filter by `name` substring → read `slug` off the response). The same shape works for chains (`getChains()`) and stablecoins (`getStablecoins()` → `peggedAssets`).\n',
+			"# Resolve chain, protocol, and stablecoin names\n\nTranslates human-facing names into the exact identifiers each DefiLlama endpoint expects, deterministically (no LLM). The key convention: a chain resolves to BOTH a `name` and a `slug` — use `.name` for api.llama.fi group endpoints (protocols, dexs, fees, historical chain TVL) and `.slug` for coins.llama.fi calls (prices, block-at-timestamp). Protocols resolve to a slug string; stablecoins resolve to a numeric id string. Each resolver returns `null` when the input doesn't match any catalog entry — handle that with the enumerate-and-filter fallback below.\n\n```js\nasync function run(defillama, { chainInput, protocolInput, stablecoinInput }) {\n  const chain = await defillama.resolveChain(chainInput); // { name, slug } | null\n  const protocol = await defillama.resolveProtocol(protocolInput); // slug string | null\n  const stablecoin = await defillama.resolveStablecoin(stablecoinInput); // numeric-id string | null\n\n  // Use .name for api.llama.fi groups, .slug for coins/price endpoints.\n  return {\n    chainName: chain?.name, // -> getHistoricalChainTvl({ chain: chain.name })\n    chainSlug: chain?.slug, // -> getBlockAtTimestamp({ chain: chain.slug })\n    protocolSlug: protocol, // -> getProtocol({ protocol })\n    stablecoinId: stablecoin, // -> getStablecoinCharts({ stablecoin })\n  };\n}\n```\n\nWhen the resolver returns `null` — the input is ambiguous, imprecise, or doesn't appear in the catalog under any close spelling — fall back to enumerate-and-filter on the upstream catalog. See the `find-protocol-slug` recipe for the worked pattern (`defillama.protocol.getProtocols()` → filter by `name` substring → read `slug` off the response). The same shape works for chains (`getChains()`) and stablecoins (`getStablecoins()` → `peggedAssets`).\n",
 	},
 	{
 		kind: "prose",
 		id: "cookbook:09-find-protocol-slug.md",
 		title: "Find a protocol's DefiLlama slug",
 		content:
-			'# Find a protocol\'s DefiLlama slug\n\nDefiLlama\'s protocol identifier is a kebab-case slug — `aave-v3`, `uniswap-v3`, `pancakeswap-amm-v3`, `curve-dex` — that\'s not always a clean transform of the display name. Versions, separators, and category suffixes ("amm", "dex") vary unpredictably between protocols, so guessing wastes calls and burns budget. The fix is always the same shape: try the resolver first, then enumerate the catalog and filter by `name`.\n\n`defillama.resolveProtocol(x)` only matches the **exact** slug/name/symbol (case-insensitive); it returns `null` when the input is ambiguous or imprecise. Use enumerate-and-filter for those cases.\n\n```js\nasync function run(defillama) {\n  // Resolver first — single-call, no upstream. Matches exact names like "Aave V3"\n  // (case-insensitive) but won\'t match a partial like "aave" or a slightly wrong\n  // spelling like "aave v3 lending".\n  const exact = await defillama.resolveProtocol("Aave V3");\n  if (exact) return exact; // -> "aave-v3"\n\n  // Fallback: enumerate. getProtocols() returns the full catalog with each\n  // entry\'s { slug, name, chains, category, tvl, change_1d, change_7d, ... }.\n  // The keyword is whatever the user typed; treat it as a fuzzy substring of\n  // `name`, never construct the slug yourself.\n  const protocols = await defillama.protocol.getProtocols();\n\n  const keyword = "aave";\n  const candidates = (protocols || [])\n    .filter(p => p && p.name && p.name.toLowerCase().includes(keyword.toLowerCase()))\n    .map(p => ({\n      slug: p.slug,\n      name: p.name,\n      chains: p.chains,\n      tvl: p.tvl,\n    }));\n\n  // Shape: `[{slug, name, chains, tvl}, ...]` — one entry per match. Pick the\n  // slug whose `name` matches the version the user asked for. DON\'T transform\n  // the name into a slug — read `slug` off the response.\n  return candidates;\n}\n```\n\nOnce you have the canonical slug, pass it as `protocol` to the per-protocol endpoints:\n\n- `defillama.protocol.getProtocol({ protocol: "aave-v3" })` — TVL + per-chain breakdown\n- `defillama.dex.getDexSummary({ protocol: "uniswap-v3" })` — DEX trading volume\n- `defillama.fees.getFeesSummary({ protocol: "aave-v3" })` — protocol fees and revenue\n- `defillama.options.getOptionsSummary({ protocol: "lyra" })` — options notional volume\n\n**Chains and stablecoins follow the same pattern** with different endpoints and key shapes:\n\n- **Chains:** `defillama.protocol.getChains()` returns `[{ name, tvl, ... }]`. The `name` field (e.g. `"Ethereum"`, `"BSC"`) is what api.llama.fi group endpoints expect; lowercase it for coins.llama.fi calls. See also the `resolve-names` recipe — `defillama.resolveChain(x)` returns both `{ name, slug }` and does substring matching, so the resolver succeeds more often for chains than for protocols.\n- **Stablecoins:** `defillama.stablecoin.getStablecoins()` returns `{ peggedAssets: [{ id, name, symbol, ... }] }`. The `id` is a numeric string (e.g. `"2"` for USDC). `defillama.resolveStablecoin("USDC")` does an exact symbol/name match; for fuzzier inputs ("usd-coin", "USD Coin", "Circle"), enumerate the peggedAssets list and filter on `name`/`symbol`.\n\n**Things to know about the slug scheme:**\n\n- Slugs are kebab-case lowercase of the display name with version preserved — `"Aave V3"` → `"aave-v3"`, not `aave_v3`, `aaveV3`, or `aave3`. Spaces become hyphens; punctuation is dropped.\n- Category suffixes ("amm", "dex", "lending") are sometimes part of the slug — `"PancakeSwap AMM V3"` → `"pancakeswap-amm-v3"`. Read it off the catalog rather than inferring.\n- A protocol with multiple deployed versions has a separate slug per version (`aave-v2`, `aave-v3`, `aave-v4`). The `name` field disambiguates.\n- Cross-chain protocols usually have a single slug per major version with all chain deployments rolled up; the `chains` array on the catalog entry lists which chains carry TVL.\n- Some chain display names are all-caps (`"BSC"`, `"OP"`); use `getChains()` rather than guessing case.\n',
+			'# Find a protocol\'s DefiLlama slug\n\nDefiLlama\'s protocol identifier is a kebab-case slug — `aave-v3`, `uniswap-v3`, `pancakeswap-amm-v3`, `curve-dex` — that\'s not always a clean transform of the display name. Versions, separators, and category suffixes ("amm", "dex") vary unpredictably between protocols, so guessing wastes calls and burns budget. The fix is always the same shape: try the resolver first, then enumerate the catalog and filter by `name`.\n\n`defillama.resolveProtocol(x)` only matches the **exact** slug/name/symbol (case-insensitive); it returns `null` when the input is ambiguous or imprecise. Use enumerate-and-filter for those cases.\n\n```js\nasync function run(defillama, { protocolInput, keyword }) {\n  // Resolver first — single-call, no upstream. Matches the exact catalog\n  // display name (case-insensitive) but won\'t match a partial or a slightly\n  // wrong spelling — so it returns null for fuzzy / unversioned inputs.\n  const exact = await defillama.resolveProtocol(protocolInput);\n  if (exact) return exact; // canonical slug string\n\n  // Fallback: enumerate. getProtocols() returns the full catalog with each\n  // entry\'s { slug, name, chains, category, tvl, change_1d, change_7d, ... }.\n  // The keyword is a fuzzy substring extracted from what the user said; never\n  // construct the slug yourself — always read it off the response.\n  const protocols = await defillama.protocol.getProtocols();\n\n  const candidates = (protocols || [])\n    .filter(p => p && p.name && p.name.toLowerCase().includes(keyword.toLowerCase()))\n    .map(p => ({\n      slug: p.slug,\n      name: p.name,\n      chains: p.chains,\n      tvl: p.tvl,\n    }));\n\n  // Shape: `[{slug, name, chains, tvl}, ...]` — one entry per match. Pick the\n  // slug whose `name` matches the version the user asked for. DON\'T transform\n  // the name into a slug — read `slug` off the response.\n  return candidates;\n}\n```\n\nOnce you have the canonical slug (call it `slug`), pass it through to whichever per-protocol endpoint matches the question:\n\n- `defillama.protocol.getProtocol({ protocol: slug })` — TVL + per-chain breakdown\n- `defillama.dex.getDexSummary({ protocol: slug })` — DEX trading volume\n- `defillama.fees.getFeesSummary({ protocol: slug, dataType: "dailyRevenue" })` — protocol fees and revenue\n- `defillama.options.getOptionsSummary({ protocol: slug })` — options notional volume\n\nEach catalog (DEX, fees, options) is a separate slug namespace — a slug valid in one may not be valid in another (a name like "Uniswap" appears under fees as `uniswap-v2` / `uniswap-v3` / `uniswap-labs` rather than a single unversioned slug). When in doubt, enumerate the per-catalog overview (`getDexsOverview`, `getFeesOverview`, `getOptionsOverview`) and filter `protocols` by `name` to find the slug that lives in that specific catalog.\n\n**Chains and stablecoins follow the same pattern** with different endpoints and key shapes:\n\n- **Chains:** `defillama.protocol.getChains()` returns `[{ name, tvl, ... }]`. The `name` field is what api.llama.fi group endpoints expect (case-sensitive — some chains use Title-Case, some use all-caps tickers); lowercase the same value for coins.llama.fi calls. See also the `resolve-names` recipe — `defillama.resolveChain(input)` returns both `{ name, slug }` and does substring matching, so the resolver succeeds more often for chains than for protocols.\n- **Stablecoins:** `defillama.stablecoin.getStablecoins()` returns `{ peggedAssets: [{ id, name, symbol, ... }] }`. The `id` is a numeric string assigned by DefiLlama and not derivable from the symbol. `defillama.resolveStablecoin(symbol)` does an exact symbol/name match; for fuzzier inputs (e.g. a display name that doesn\'t match either field exactly), enumerate the `peggedAssets` list and filter on `name`/`symbol`.\n\n**Things to know about the slug scheme:**\n\n- Slugs are kebab-case lowercase of the display name with version preserved — `"Aave V3"` → `"aave-v3"`, not `aave_v3`, `aaveV3`, or `aave3`. Spaces become hyphens; punctuation is dropped.\n- Category suffixes ("amm", "dex", "lending") are sometimes part of the slug — `"PancakeSwap AMM V3"` → `"pancakeswap-amm-v3"`. Read it off the catalog rather than inferring.\n- A protocol with multiple deployed versions has a separate slug per version (`aave-v2`, `aave-v3`, `aave-v4`). The `name` field disambiguates.\n- Cross-chain protocols usually have a single slug per major version with all chain deployments rolled up; the `chains` array on the catalog entry lists which chains carry TVL.\n- Some chain display names are all-caps (`"BSC"`, `"OP"`); use `getChains()` rather than guessing case.\n',
 	},
 ];
