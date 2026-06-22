@@ -156,7 +156,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: ProtocolSchema,
 		exampleCall:
-			"const slug = await defillama.resolveProtocol(name); const p = await defillama.protocol.getProtocol({protocol: slug}); return { name: p.name, tvl: p.tvl, chains: p.chains, change_1d: p.change_1d, change_7d: p.change_7d }",
+			"const slug = await defillama.resolveProtocol(name); const p = await defillama.protocol.getProtocol({protocol: slug}); const last = p.tvl?.[p.tvl.length - 1]; return { name: p.name, currentTvl: last?.totalLiquidityUSD, asOf: last?.date, chains: p.chains }",
 	},
 	{
 		name: "defillama_get_historical_chain_tvl",
@@ -635,7 +635,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: HistoricalPoolSchema,
 		exampleCall:
-			"const pools = await defillama.yield.getLatestPools(); const id = (pools.data ?? []).find(p => /* match on project/symbol/chain */)?.pool; const series = await defillama.yield.getHistoricalPoolData({pool: id}); return series.slice(-90).map(p => ({timestamp: p.timestamp, apy: p.apy, tvlUsd: p.tvlUsd}))",
+			"const pools = await defillama.yield.getLatestPools(); const id = (pools.data ?? []).find(p => /* match on project/symbol/chain */)?.pool; const series = await defillama.yield.getHistoricalPoolData({pool: id}); return (series.data ?? []).slice(-90).map(p => ({timestamp: p.timestamp, apy: p.apy, tvlUsd: p.tvlUsd}))",
 	},
 	// ── Blockchain (coins.llama.fi) ────────────────────────────────────────
 	{
