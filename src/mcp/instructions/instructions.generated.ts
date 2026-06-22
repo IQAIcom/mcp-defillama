@@ -86,11 +86,18 @@ replacing spaces; that's the wrong reflex.
 
 ## Price coin format — \`chain:address\`
 
-The \`price\` group identifies tokens as \`chain:address\`, using the lowercase
-chain slug, e.g. \`ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2\`. Native
-coins use the \`coingecko:\` prefix (e.g. \`coingecko:ethereum\`). Pass multiple
-comma-separated, e.g.
-\`await defillama.price.getCurrentPrices({ coins: 'ethereum:0x...,coingecko:bitcoin' })\`.
+The \`price\` group identifies tokens as \`\${chainSlug}:\${tokenAddress}\`, where
+\`chainSlug\` is the LOWERCASE chain slug (get it from
+\`defillama.resolveChain(input).slug\`) and \`tokenAddress\` is the on-chain
+contract address (supplied by the user, a wallet, or an explorer — there is
+no DefiLlama-side address discovery). Native coins use the \`coingecko:\` prefix
+with a CoinGecko id (e.g. \`coingecko:<id>\`). Pass multiple comma-separated:
+
+\`\`\`js
+const { slug } = await defillama.resolveChain(input);
+const coins = \`\${slug}:\${tokenAddress},coingecko:\${nativeCoinId}\`;
+await defillama.price.getCurrentPrices({ coins });
+\`\`\`
 
 ## IQ Gateway vs. direct
 

@@ -5,20 +5,19 @@ DefiLlama's protocol identifier is a kebab-case slug — `aave-v3`, `uniswap-v3`
 `defillama.resolveProtocol(x)` only matches the **exact** slug/name/symbol (case-insensitive); it returns `null` when the input is ambiguous or imprecise. Use enumerate-and-filter for those cases.
 
 ```js
-async function run(defillama) {
-  // Resolver first — single-call, no upstream. Matches exact names like "Aave V3"
-  // (case-insensitive) but won't match a partial like "aave" or a slightly wrong
-  // spelling like "aave v3 lending".
-  const exact = await defillama.resolveProtocol("Aave V3");
-  if (exact) return exact; // -> "aave-v3"
+async function run(defillama, { protocolInput, keyword }) {
+  // Resolver first — single-call, no upstream. Matches the exact catalog
+  // display name (case-insensitive) but won't match a partial or a slightly
+  // wrong spelling — so it returns null for fuzzy / unversioned inputs.
+  const exact = await defillama.resolveProtocol(protocolInput);
+  if (exact) return exact; // canonical slug string
 
   // Fallback: enumerate. getProtocols() returns the full catalog with each
   // entry's { slug, name, chains, category, tvl, change_1d, change_7d, ... }.
-  // The keyword is whatever the user typed; treat it as a fuzzy substring of
-  // `name`, never construct the slug yourself.
+  // The keyword is a fuzzy substring extracted from what the user said; never
+  // construct the slug yourself — always read it off the response.
   const protocols = await defillama.protocol.getProtocols();
 
-  const keyword = "aave";
   const candidates = (protocols || [])
     .filter(p => p && p.name && p.name.toLowerCase().includes(keyword.toLowerCase()))
     .map(p => ({
@@ -35,17 +34,19 @@ async function run(defillama) {
 }
 ```
 
-Once you have the canonical slug, pass it as `protocol` to the per-protocol endpoints:
+Once you have the canonical slug (call it `slug`), pass it through to whichever per-protocol endpoint matches the question:
 
-- `defillama.protocol.getProtocol({ protocol: "aave-v3" })` — TVL + per-chain breakdown
-- `defillama.dex.getDexSummary({ protocol: "uniswap-v3" })` — DEX trading volume
-- `defillama.fees.getFeesSummary({ protocol: "aave-v3" })` — protocol fees and revenue
-- `defillama.options.getOptionsSummary({ protocol: "lyra" })` — options notional volume
+- `defillama.protocol.getProtocol({ protocol: slug })` — TVL + per-chain breakdown
+- `defillama.dex.getDexSummary({ protocol: slug })` — DEX trading volume
+- `defillama.fees.getFeesSummary({ protocol: slug, dataType: "dailyRevenue" })` — protocol fees and revenue
+- `defillama.options.getOptionsSummary({ protocol: slug })` — options notional volume
+
+Each catalog (DEX, fees, options) is a separate slug namespace — a slug valid in one may not be valid in another (a name like "Uniswap" appears under fees as `uniswap-v2` / `uniswap-v3` / `uniswap-labs` rather than a single unversioned slug). When in doubt, enumerate the per-catalog overview (`getDexsOverview`, `getFeesOverview`, `getOptionsOverview`) and filter `protocols` by `name` to find the slug that lives in that specific catalog.
 
 **Chains and stablecoins follow the same pattern** with different endpoints and key shapes:
 
-- **Chains:** `defillama.protocol.getChains()` returns `[{ name, tvl, ... }]`. The `name` field (e.g. `"Ethereum"`, `"BSC"`) is what api.llama.fi group endpoints expect; lowercase it for coins.llama.fi calls. See also the `resolve-names` recipe — `defillama.resolveChain(x)` returns both `{ name, slug }` and does substring matching, so the resolver succeeds more often for chains than for protocols.
-- **Stablecoins:** `defillama.stablecoin.getStablecoins()` returns `{ peggedAssets: [{ id, name, symbol, ... }] }`. The `id` is a numeric string (e.g. `"2"` for USDC). `defillama.resolveStablecoin("USDC")` does an exact symbol/name match; for fuzzier inputs ("usd-coin", "USD Coin", "Circle"), enumerate the peggedAssets list and filter on `name`/`symbol`.
+- **Chains:** `defillama.protocol.getChains()` returns `[{ name, tvl, ... }]`. The `name` field is what api.llama.fi group endpoints expect (case-sensitive — some chains use Title-Case, some use all-caps tickers); lowercase the same value for coins.llama.fi calls. See also the `resolve-names` recipe — `defillama.resolveChain(input)` returns both `{ name, slug }` and does substring matching, so the resolver succeeds more often for chains than for protocols.
+- **Stablecoins:** `defillama.stablecoin.getStablecoins()` returns `{ peggedAssets: [{ id, name, symbol, ... }] }`. The `id` is a numeric string assigned by DefiLlama and not derivable from the symbol. `defillama.resolveStablecoin(symbol)` does an exact symbol/name match; for fuzzier inputs (e.g. a display name that doesn't match either field exactly), enumerate the `peggedAssets` list and filter on `name`/`symbol`.
 
 **Things to know about the slug scheme:**
 
