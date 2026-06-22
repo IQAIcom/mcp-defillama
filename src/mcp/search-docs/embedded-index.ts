@@ -706,7 +706,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const pools = await defillama.yield.getLatestPools(); const id = pools.data.find(p => /* match on project/symbol/chain */).pool; const series = await defillama.yield.getHistoricalPoolData({pool: id}); return series.slice(-90).map(p => ({timestamp: p.timestamp, apy: p.apy, tvlUsd: p.tvlUsd}))",
+			"const pools = await defillama.yield.getLatestPools(); const id = (pools.data ?? []).find(p => /* match on project/symbol/chain */)?.pool; const series = await defillama.yield.getHistoricalPoolData({pool: id}); return series.slice(-90).map(p => ({timestamp: p.timestamp, apy: p.apy, tvlUsd: p.tvlUsd}))",
 	},
 	{
 		kind: "method",
