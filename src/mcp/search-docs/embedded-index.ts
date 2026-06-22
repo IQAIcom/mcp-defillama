@@ -379,7 +379,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const series = await defillama.stablecoin.getStablecoinPrices(); return series.slice(-30)",
+			"const series = await defillama.stablecoin.getStablecoinPrices(); return series.slice(-90).map(p => ({date: p.date, prices: p.prices}))",
 	},
 	{
 		kind: "method",

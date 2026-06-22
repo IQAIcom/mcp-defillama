@@ -429,7 +429,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		parameters: z.object({}),
 		responseSchema: StablecoinPricesSchema,
 		exampleCall:
-			"const series = await defillama.stablecoin.getStablecoinPrices(); return series.slice(-30)",
+			"const series = await defillama.stablecoin.getStablecoinPrices(); return series.slice(-90).map(p => ({date: p.date, prices: p.prices}))",
 	},
 	// ── Prices (coins.llama.fi) ────────────────────────────────────────────
 	{
