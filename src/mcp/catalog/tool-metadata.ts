@@ -156,7 +156,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: ProtocolSchema,
 		exampleCall:
-			"const slug = await defillama.resolveProtocol(name); if (!slug) return { error: 'Protocol not found' }; const p = await defillama.protocol.getProtocol({protocol: slug}); const last = p.tvl?.at(-1); return { name: p.name, currentTvl: last?.totalLiquidityUSD, asOf: last?.date, chains: p.chains }",
+			"const slug = await defillama.resolveProtocol(name); if (!slug) return { error: 'Protocol not found' }; const p = await defillama.protocol.getProtocol({protocol: slug}); const last = p.tvl?.at(-1); return { name: p.name, currentTvl: last?.totalLiquidityUSD, asOf: last?.date ? new Date(last.date * 1000).toISOString() : undefined, chains: p.chains }",
 	},
 	{
 		name: "defillama_get_historical_chain_tvl",
