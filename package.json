@@ -1,6 +1,6 @@
 {
 	"name": "@iqai/defillama-mcp",
-	"version": "1.0.7",
+	"version": "1.0.8",
 	"description": "Standalone MCP server for DefiLlama data access",
 	"main": "dist/index.js",
 	"type": "module",
