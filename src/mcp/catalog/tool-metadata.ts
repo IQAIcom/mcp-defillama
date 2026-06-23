@@ -383,7 +383,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: StablecoinsSchema,
 		exampleCall:
-			"const res = await defillama.stablecoin.getStablecoins({includePrices: true}); return (res.peggedAssets ?? []).slice(0, 20).map(s => ({id: s.id, symbol: s.symbol, name: s.name, circulating: s.circulating, price: s.price}))",
+			"const res = await defillama.stablecoin.getStablecoins({includePrices: true}); return (res.peggedAssets ?? []).slice(0, 20).map(s => ({id: s.id, symbol: s.symbol, name: s.name, circulating: s.circulating?.peggedUSD /* upstream wraps as {peggedUSD: n}; unwrap for a flat numeric */, price: s.price}))",
 	},
 	{
 		name: "defillama_get_stablecoin_chains",
@@ -394,7 +394,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		parameters: z.object({}),
 		responseSchema: StablecoinChainsSchema,
 		exampleCall:
-			"const rows = await defillama.stablecoin.getStablecoinChains(); return rows.slice(0, 30).map(r => ({name: r.name, total: r.totalCirculatingUSD}))",
+			"const rows = await defillama.stablecoin.getStablecoinChains(); return rows.slice(0, 30).map(r => ({name: r.name, total: r.totalCirculatingUSD?.peggedUSD /* upstream wraps as {peggedUSD: n}; unwrap for a flat numeric */}))",
 	},
 	{
 		name: "defillama_get_stablecoin_charts",
