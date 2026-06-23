@@ -128,7 +128,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		parameters: z.object({}),
 		responseSchema: ChainsSchema,
 		exampleCall:
-			"const chains = await defillama.protocol.getChains(); return chains.sort((a,b) => (b.tvl ?? 0) - (a.tvl ?? 0)).slice(0, 20).map(c => ({name: c.name, tvl: c.tvl}))",
+			"const chains = await defillama.protocol.getChains(); return [...chains].sort((a,b) => (b.tvl ?? 0) - (a.tvl ?? 0)).slice(0, 20).map(c => ({name: c.name, tvl: c.tvl}))",
 	},
 	{
 		name: "defillama_get_protocols",
@@ -139,7 +139,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		parameters: z.object({}),
 		responseSchema: ProtocolsSchema,
 		exampleCall:
-			"const protocols = await defillama.protocol.getProtocols(); return protocols.sort((a,b) => (b.tvl ?? 0) - (a.tvl ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, tvl: p.tvl, chains: p.chains, change_7d: p.change_7d}))",
+			"const protocols = await defillama.protocol.getProtocols(); return [...protocols].sort((a,b) => (b.tvl ?? 0) - (a.tvl ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, tvl: p.tvl, chains: p.chains, change_7d: p.change_7d}))",
 	},
 	{
 		name: "defillama_get_protocol",
@@ -234,7 +234,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: DexOverviewSchema,
 		exampleCall:
-			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const overview = await defillama.dex.getDexsOverview({chain: chain.name}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const overview = await defillama.dex.getDexsOverview({chain: chain.name}); return [...(overview.protocols ?? [])].sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
 	},
 	// ── Fees & Revenue (api.llama.fi) ──────────────────────────────────────
 	{
@@ -306,7 +306,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: FeesOverviewSchema,
 		exampleCall:
-			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const overview = await defillama.fees.getFeesOverview({chain: chain.name, dataType: 'dailyFees'}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const overview = await defillama.fees.getFeesOverview({chain: chain.name, dataType: 'dailyFees'}); return [...(overview.protocols ?? [])].sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
 	},
 	// ── Options (api.llama.fi) ─────────────────────────────────────────────
 	{
@@ -366,7 +366,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: OptionsOverviewSchema,
 		exampleCall:
-			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const overview = await defillama.options.getOptionsOverview({chain: chain.name}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const overview = await defillama.options.getOptionsOverview({chain: chain.name}); return [...(overview.protocols ?? [])].sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
 	},
 	// ── Stablecoins (stablecoins.llama.fi) ─────────────────────────────────
 	{
@@ -618,7 +618,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		parameters: z.object({}),
 		responseSchema: PoolsSchema,
 		exampleCall:
-			"const pools = await defillama.yield.getLatestPools(); return (pools.data ?? []).sort((a,b) => (b.apy ?? 0) - (a.apy ?? 0)).slice(0, 20).map(p => ({pool: p.pool, project: p.project, symbol: p.symbol, chain: p.chain, apy: p.apy, tvlUsd: p.tvlUsd}))",
+			"const pools = await defillama.yield.getLatestPools(); return [...(pools.data ?? [])].sort((a,b) => (b.apy ?? 0) - (a.apy ?? 0)).slice(0, 20).map(p => ({pool: p.pool, project: p.project, symbol: p.symbol, chain: p.chain, apy: p.apy, tvlUsd: p.tvlUsd}))",
 	},
 	{
 		name: "defillama_get_historical_pool_data",
@@ -635,7 +635,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: HistoricalPoolSchema,
 		exampleCall:
-			"const pools = await defillama.yield.getLatestPools(); const id = (pools.data ?? []).find(p => /* match on project/symbol/chain */)?.pool; if (!id) return { error: 'Pool not found' }; const series = await defillama.yield.getHistoricalPoolData({pool: id}); return (series.data ?? []).slice(-90).map(p => ({timestamp: p.timestamp /* already an ISO string, unlike the date:number fields on /v2 endpoints */, apy: p.apy, tvlUsd: p.tvlUsd}))",
+			"const pools = await defillama.yield.getLatestPools(); const id = (pools.data ?? []).find(p => p.project === projectInput && p.symbol === symbolInput && p.chain === chainInput)?.pool; if (!id) return { error: 'Pool not found' }; const series = await defillama.yield.getHistoricalPoolData({pool: id}); return (series.data ?? []).slice(-90).map(p => ({timestamp: p.timestamp /* already an ISO string, unlike the date:number fields on /v2 endpoints */, apy: p.apy, tvlUsd: p.tvlUsd}))",
 	},
 	// ── Blockchain (coins.llama.fi) ────────────────────────────────────────
 	{

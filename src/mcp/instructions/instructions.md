@@ -108,10 +108,10 @@ shipping unshaped data back.
 
 Three patterns cover almost every case:
 
-1. **Lists** — sort, slice, project the fields you need:
+1. **Lists** — sort, slice, project the fields you need. Use `[...arr].sort(...)` (or `arr.toSorted(...)`) rather than `arr.sort(...)` so the example is safe to copy-paste outside the sandbox, where `sort` would mutate the source array in place:
    ```js
    const protocols = await defillama.protocol.getProtocols();
-   return protocols
+   return [...protocols]
      .sort((a, b) => (b.tvl ?? 0) - (a.tvl ?? 0))
      .slice(0, 20)
      .map(p => ({ slug: p.slug, name: p.name, tvl: p.tvl, chains: p.chains }));
