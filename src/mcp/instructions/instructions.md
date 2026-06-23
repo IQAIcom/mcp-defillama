@@ -96,6 +96,54 @@ const coins = `${slug}:${tokenAddress},coingecko:${nativeCoinId}`;
 await defillama.price.getCurrentPrices({ coins });
 ```
 
+## Shape responses inside `execute()` — don't ship raw payloads back
+
+The `execute()` sandbox is where you trim, project, and shape. Its return
+value is what crosses back to your context — broad endpoints
+(`getProtocols`, `getDexsOverview`, `getLatestPools`, `getStablecoins`, all
+the `*Overview` siblings) routinely return multi-MB payloads with thousands
+of entries. **Never return the raw response.** The Q1-class context-overflow
+and Q3/Q7-class minutes-spent-post-processing failure modes both come from
+shipping unshaped data back.
+
+Three patterns cover almost every case:
+
+1. **Lists** — sort, slice, project the fields you need. Use `[...arr].sort(...)` (or `arr.toSorted(...)`) rather than `arr.sort(...)` so the example is safe to copy-paste outside the sandbox, where `sort` would mutate the source array in place:
+   ```js
+   const protocols = await defillama.protocol.getProtocols();
+   return [...protocols]
+     .sort((a, b) => (b.tvl ?? 0) - (a.tvl ?? 0))
+     .slice(0, 20)
+     .map(p => ({ slug: p.slug, name: p.name, tvl: p.tvl, chains: p.chains }));
+   ```
+
+2. **Time-series** — slice the tail you care about, drop the extra fields. Note that `/v2`-style endpoints return `date` as Unix **seconds**, while JS `new Date(n)` expects **milliseconds** — multiply by 1000 before constructing the Date:
+   ```js
+   const series = await defillama.protocol.getHistoricalChainTvl({ chain: name });
+   return series.slice(-90).map(p => ({
+     date: new Date(p.date * 1000).toISOString(),
+     tvl: p.tvl,
+   }));
+   ```
+
+3. **Single-entity summaries** — pluck only the fields the question needs:
+   ```js
+   const s = await defillama.dex.getDexSummary({ protocol: slug });
+   return { name: s.name, total24h: s.total24h, change_7d: s.change_7d };
+   ```
+
+For the `price.*` family, responses are keyed under `coins[chainSlug:address]`
+— pluck via `res.coins?.[key]?.price` (or `.prices` for the chart endpoints).
+
+**Prefer the narrow endpoint when one exists.** `getProtocol({slug})` is the
+right tool for "what is X's TVL"; `getProtocols()` is for cross-protocol
+aggregates and the resolver fallback only. Same pattern: `getDexSummary` vs
+`getDexsOverview`, `getFeesSummary` vs `getFeesOverview`, `getOptionsSummary`
+vs `getOptionsOverview`. When you do need a broad endpoint (genuine
+aggregate question, or `resolveProtocol(name)` returned null), still
+project/filter inside `execute()` before returning so the raw catalog never
+crosses back.
+
 ## IQ Gateway vs. direct
 
 If `IQ_GATEWAY_URL` and `IQ_GATEWAY_KEY` are set, upstream calls route through
