@@ -70,7 +70,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const slug = await defillama.resolveProtocol(name); const p = await defillama.protocol.getProtocol({protocol: slug}); const last = p.tvl?.[p.tvl.length - 1]; return { name: p.name, currentTvl: last?.totalLiquidityUSD, asOf: last?.date, chains: p.chains }",
+			"const slug = await defillama.resolveProtocol(name); const p = await defillama.protocol.getProtocol({protocol: slug}); const last = p.tvl?.at(-1); return { name: p.name, currentTvl: last?.totalLiquidityUSD, asOf: last?.date, chains: p.chains }",
 	},
 	{
 		kind: "method",
