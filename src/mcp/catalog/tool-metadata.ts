@@ -174,7 +174,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: HistoricalChainTvlSchema,
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); const series = await defillama.protocol.getHistoricalChainTvl({chain: name}); return series.slice(-90).map(p => ({date: p.date, tvl: p.tvl}))",
+			"const {name} = await defillama.resolveChain(input); const series = await defillama.protocol.getHistoricalChainTvl({chain: name}); return series.slice(-90).map(p => ({date: new Date(p.date * 1000).toISOString() /* p.date is Unix seconds; multiply by 1000 for JS Date */, tvl: p.tvl}))",
 	},
 	// ── DEX (api.llama.fi) ─────────────────────────────────────────────────
 	{
@@ -418,7 +418,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: StablecoinChartsSchema,
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); const id = await defillama.resolveStablecoin(symbol); const series = await defillama.stablecoin.getStablecoinCharts({chain: name, stablecoin: id}); return series.slice(-90).map(p => ({date: p.date, totalCirculatingUSD: p.totalCirculatingUSD}))",
+			"const {name} = await defillama.resolveChain(input); const id = await defillama.resolveStablecoin(symbol); const series = await defillama.stablecoin.getStablecoinCharts({chain: name, stablecoin: id}); return series.slice(-90).map(p => ({date: new Date(p.date * 1000).toISOString() /* p.date is Unix seconds; multiply by 1000 for JS Date */, totalCirculatingUSD: p.totalCirculatingUSD}))",
 	},
 	{
 		name: "defillama_get_stablecoin_prices",
@@ -429,7 +429,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		parameters: z.object({}),
 		responseSchema: StablecoinPricesSchema,
 		exampleCall:
-			"const series = await defillama.stablecoin.getStablecoinPrices(); return series.slice(-90).map(p => ({date: p.date, prices: p.prices}))",
+			"const series = await defillama.stablecoin.getStablecoinPrices(); return series.slice(-90).map(p => ({date: new Date(p.date * 1000).toISOString() /* p.date is Unix seconds; multiply by 1000 for JS Date */, prices: p.prices}))",
 	},
 	// ── Prices (coins.llama.fi) ────────────────────────────────────────────
 	{
@@ -635,7 +635,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: HistoricalPoolSchema,
 		exampleCall:
-			"const pools = await defillama.yield.getLatestPools(); const id = (pools.data ?? []).find(p => /* match on project/symbol/chain */)?.pool; if (!id) return { error: 'Pool not found' }; const series = await defillama.yield.getHistoricalPoolData({pool: id}); return (series.data ?? []).slice(-90).map(p => ({timestamp: p.timestamp, apy: p.apy, tvlUsd: p.tvlUsd}))",
+			"const pools = await defillama.yield.getLatestPools(); const id = (pools.data ?? []).find(p => /* match on project/symbol/chain */)?.pool; if (!id) return { error: 'Pool not found' }; const series = await defillama.yield.getHistoricalPoolData({pool: id}); return (series.data ?? []).slice(-90).map(p => ({timestamp: p.timestamp /* already an ISO string, unlike the date:number fields on /v2 endpoints */, apy: p.apy, tvlUsd: p.tvlUsd}))",
 	},
 	// ── Blockchain (coins.llama.fi) ────────────────────────────────────────
 	{
