@@ -124,27 +124,29 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		qualified: "defillama.protocol.getChains",
 		sandboxImpl: lazyMethod("protocolService", "getChainsRaw"),
 		description:
-			"List every chain DefiLlama tracks, each with its current TVL. Returns the full array (sort/slice in your execute() script). This is the canonical chain catalog — read the `name` field for api.llama.fi endpoints (case-sensitive display name) and lowercase that same value for coins.llama.fi price/block calls. Prefer `defillama.resolveChain(input)` for translating a human input to the right form; fall back to enumerating this list when the resolver returns null.",
+			"Broad list of every chain DefiLlama tracks (~200 entries with current TVL). Use for cross-chain aggregate queries (TVL leaderboards, chain discovery) or as the resolver fallback. For 'what is X chain's TVL', prefer `defillama.resolveChain(input)` → `getHistoricalChainTvl({chain})` instead. Read `name` for api.llama.fi endpoints; lowercase the same value for coins.llama.fi. ALWAYS sort/filter/project inside the `execute()` sandbox — never return the raw catalog.",
 		parameters: z.object({}),
 		responseSchema: ChainsSchema,
-		exampleCall: "await defillama.protocol.getChains()",
+		exampleCall:
+			"const chains = await defillama.protocol.getChains(); return chains.sort((a,b) => (b.tvl ?? 0) - (a.tvl ?? 0)).slice(0, 20).map(c => ({name: c.name, tvl: c.tvl}))",
 	},
 	{
 		name: "defillama_get_protocols",
 		qualified: "defillama.protocol.getProtocols",
 		sandboxImpl: lazyMethod("protocolService", "getProtocolsRaw"),
 		description:
-			"List every DeFi protocol DefiLlama tracks with its TVL, category, chains and recent change metrics. Returns the full unsorted array (sort/slice/field-pick in your execute() script).",
+			"Returns the FULL DefiLlama protocol catalog (~3k entries, several MB of JSON). Use ONLY for cross-protocol aggregate queries (leaderboards, category rollups, by-chain counts) or as the discovery fallback when `defillama.resolveProtocol(name)` returns null. For a single-protocol question ('what is X's TVL?'), prefer the resolver → `getProtocol({protocol: slug})` path — calling this endpoint and returning the raw response blows the agent's context. ALWAYS project/filter/sort/slice inside the `execute()` sandbox before returning.",
 		parameters: z.object({}),
 		responseSchema: ProtocolsSchema,
-		exampleCall: "await defillama.protocol.getProtocols()",
+		exampleCall:
+			"const protocols = await defillama.protocol.getProtocols(); return protocols.sort((a,b) => (b.tvl ?? 0) - (a.tvl ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, tvl: p.tvl, chains: p.chains, change_7d: p.change_7d}))",
 	},
 	{
 		name: "defillama_get_protocol",
 		qualified: "defillama.protocol.getProtocol",
 		sandboxImpl: lazyMethod("protocolService", "getProtocolRaw"),
 		description:
-			"Fetch detailed TVL data for a single DeFi protocol, including per-chain TVL breakdowns and historical series. Pass the canonical protocol slug from the DefiLlama catalog. Slugs are kebab-case lowercase with version suffixes preserved and are NOT derivable from display names — discover via `defillama.resolveProtocol(name)` or by enumerating `defillama.protocol.getProtocols()` and filtering on `name` (see the find-protocol-slug recipe). Don't construct the slug by transforming a display name.",
+			"Narrow endpoint for a SINGLE protocol's TVL, per-chain breakdown, and historical series. Preferred over `getProtocols()` for any 'what is X' question. The response is large (per-chain breakdowns + full historical TVL series); pluck the fields you actually need rather than returning the whole object. Pass the canonical kebab-case slug from the DefiLlama catalog — discover via `defillama.resolveProtocol(name)` or by enumerating `defillama.protocol.getProtocols()` and filtering on `name` (see the find-protocol-slug recipe). Slugs are NOT derivable from display names.",
 		parameters: z.object({
 			protocol: z
 				.string()
@@ -154,7 +156,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: ProtocolSchema,
 		exampleCall:
-			"const slug = await defillama.resolveProtocol(name); await defillama.protocol.getProtocol({protocol: slug})",
+			"const slug = await defillama.resolveProtocol(name); const p = await defillama.protocol.getProtocol({protocol: slug}); const last = p.tvl?.[p.tvl.length - 1]; return { name: p.name, currentTvl: last?.totalLiquidityUSD, asOf: last?.date, chains: p.chains }",
 	},
 	{
 		name: "defillama_get_historical_chain_tvl",
@@ -172,7 +174,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: HistoricalChainTvlSchema,
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); await defillama.protocol.getHistoricalChainTvl({chain: name})",
+			"const {name} = await defillama.resolveChain(input); const series = await defillama.protocol.getHistoricalChainTvl({chain: name}); return series.slice(-90).map(p => ({date: p.date, tvl: p.tvl}))",
 	},
 	// ── DEX (api.llama.fi) ─────────────────────────────────────────────────
 	{
@@ -180,7 +182,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		qualified: "defillama.dex.getDexSummary",
 		sandboxImpl: lazyMethod("dexService", "getDexSummaryRaw"),
 		description:
-			"Fetch detailed DEX trading-volume data for a single DEX protocol, including totals and (optionally) the volume chart series. Pass the canonical DEX protocol slug from the DefiLlama catalog. Slugs are kebab-case and version-suffixed and NOT derivable from display names — discover via `defillama.resolveProtocol(name)` or by enumerating `defillama.dex.getDexsOverview().protocols` and filtering on `name`. Don't construct the slug by transforming a display name.",
+			"Narrow endpoint for a SINGLE DEX protocol's trading volume. Response has 30+ fields covering totals (24h/7d/30d/all-time), percentage changes, per-chain breakdowns, and (optionally) the volume chart series — pluck the specific fields you need rather than returning the whole object. Pass the canonical kebab-case DEX slug — discover via `defillama.resolveProtocol(name)` or by enumerating `defillama.dex.getDexsOverview().protocols` and filtering on `name`. Slugs are NOT derivable from display names. Each catalog (DEX, revenue, options) has its own slug namespace — a slug valid in one may not exist in another.",
 		parameters: z.object({
 			protocol: z
 				.string()
@@ -202,14 +204,14 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: DexSummarySchema,
 		exampleCall:
-			"const slug = await defillama.resolveProtocol(name); await defillama.dex.getDexSummary({protocol: slug})",
+			"const slug = await defillama.resolveProtocol(name); const s = await defillama.dex.getDexSummary({protocol: slug}); return { name: s.name, total24h: s.total24h, total7d: s.total7d, total30d: s.total30d, totalAllTime: s.totalAllTime, change_1d: s.change_1d, change_7d: s.change_7d }",
 	},
 	{
 		name: "defillama_get_dexs_overview",
 		qualified: "defillama.dex.getDexsOverview",
 		sandboxImpl: lazyMethod("dexService", "getDexsOverviewRaw"),
 		description:
-			"Fetch a DEX volume overview across all DEXs, or scoped to one chain when `chain` is provided. Returns the full `protocols` array (sort/slice/field-pick in your execute() script). Use the chain DISPLAY NAME from `defillama.resolveChain(input).name` (case-sensitive).",
+			"Broad overview of DEX volume across all DEXs, or scoped to one chain. Returns a large `protocols` array — use for leaderboards, cross-DEX comparisons, or as the canonical source for discovering valid DEX slugs (`slug` field on each entry). For a single-DEX question, prefer the resolver → `getDexSummary({protocol: slug})` path. ALWAYS sort/filter/project inside the `execute()` sandbox before returning; never return the raw response.",
 		parameters: z.object({
 			chain: z
 				.string()
@@ -232,7 +234,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: DexOverviewSchema,
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); await defillama.dex.getDexsOverview({chain: name})",
+			"const {name} = await defillama.resolveChain(input); const overview = await defillama.dex.getDexsOverview({chain: name}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
 	},
 	// ── Fees & Revenue (api.llama.fi) ──────────────────────────────────────
 	{
@@ -240,7 +242,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		qualified: "defillama.fees.getFeesSummary",
 		sandboxImpl: lazyMethod("feesService", "getFeesSummaryRaw"),
 		description:
-			"Fetch detailed fees/revenue metrics for a single protocol. Pass the canonical fees-protocol slug from the DefiLlama catalog. The fees catalog often uses version-suffixed slugs (e.g. a single display name like 'Uniswap' maps to multiple fees-tracked deployments like `uniswap-v2`, `uniswap-v3`, `uniswap-labs`), so discovery is required — use `defillama.resolveProtocol(name)` or enumerate `defillama.fees.getFeesOverview().protocols` and filter on `name`. Don't pass an unversioned display-name guess. Use `dataType` to choose which metric series to return.",
+			"Narrow endpoint for a SINGLE protocol's fees/revenue. Response includes totals (24h/7d/30d/all-time), per-chain breakdowns, and (optionally) the daily chart series — pluck the specific fields you need rather than returning the whole object. The fees catalog often uses version-suffixed slugs (one display name like 'Uniswap' maps to multiple fees-tracked deployments such as `uniswap-v2`, `uniswap-v3`, `uniswap-labs`), so discovery is required — use `defillama.resolveProtocol(name)` or enumerate `defillama.fees.getFeesOverview().protocols` and filter on `name`. Don't pass an unversioned display-name guess. Use `dataType` to choose which metric series to return.",
 		parameters: z.object({
 			protocol: z
 				.string()
@@ -268,14 +270,14 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: FeesSummarySchema,
 		exampleCall:
-			"const slug = await defillama.resolveProtocol(name); await defillama.fees.getFeesSummary({protocol: slug, dataType: 'dailyRevenue'})",
+			"const slug = await defillama.resolveProtocol(name); const s = await defillama.fees.getFeesSummary({protocol: slug, dataType: 'dailyRevenue'}); return { name: s.name, total24h: s.total24h, total7d: s.total7d, total30d: s.total30d, totalAllTime: s.totalAllTime, change_1d: s.change_1d, change_7d: s.change_7d }",
 	},
 	{
 		name: "defillama_get_fees_overview",
 		qualified: "defillama.fees.getFeesOverview",
 		sandboxImpl: lazyMethod("feesService", "getFeesOverviewRaw"),
 		description:
-			"Fetch a fees/revenue overview across all protocols, or scoped to one chain when `chain` is provided. Returns the full `protocols` array (sort/slice/field-pick in your execute() script). Use the chain DISPLAY NAME from `defillama.resolveChain(input).name` (case-sensitive). This is also the canonical source for discovering valid fees-protocol slugs — read the `slug` field off each entry.",
+			"Broad overview of protocol fees/revenue across all chains, or scoped to one chain. Returns a large `protocols` array — use for leaderboards, cross-protocol comparisons, or as the canonical source for discovering valid fees-protocol slugs (`slug` field on each entry). For a single-protocol question, prefer the resolver → `getFeesSummary({protocol: slug})` path. ALWAYS sort/filter/project inside the `execute()` sandbox before returning; never return the raw response.",
 		parameters: z.object({
 			chain: z
 				.string()
@@ -304,7 +306,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: FeesOverviewSchema,
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); await defillama.fees.getFeesOverview({chain: name, dataType: 'dailyFees'})",
+			"const {name} = await defillama.resolveChain(input); const overview = await defillama.fees.getFeesOverview({chain: name, dataType: 'dailyFees'}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
 	},
 	// ── Options (api.llama.fi) ─────────────────────────────────────────────
 	{
@@ -312,7 +314,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		qualified: "defillama.options.getOptionsSummary",
 		sandboxImpl: lazyMethod("optionsService", "getOptionsSummaryRaw"),
 		description:
-			"Fetch detailed options-protocol volume data for a single protocol. Pass the canonical options-protocol slug from the DefiLlama catalog — discover via `defillama.resolveProtocol(name)` or by enumerating `defillama.options.getOptionsOverview().protocols` and filtering on `name`. Don't construct the slug by transforming a display name. Use `dataType` to choose premium vs notional volume.",
+			"Narrow endpoint for a SINGLE options protocol's volume. Response includes totals (24h/7d/30d/all-time), per-chain breakdowns, and (optionally) chart series — pluck the specific fields you need rather than returning the whole object. Pass the canonical options-protocol slug — discover via `defillama.resolveProtocol(name)` or by enumerating `defillama.options.getOptionsOverview().protocols` and filtering on `name`. Don't construct the slug by transforming a display name. Use `dataType` to choose premium vs notional volume.",
 		parameters: z.object({
 			protocol: z
 				.string()
@@ -328,14 +330,14 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: OptionsSummarySchema,
 		exampleCall:
-			"const slug = await defillama.resolveProtocol(name); await defillama.options.getOptionsSummary({protocol: slug})",
+			"const slug = await defillama.resolveProtocol(name); const s = await defillama.options.getOptionsSummary({protocol: slug}); return { name: s.name, total24h: s.total24h, total7d: s.total7d, totalAllTime: s.totalAllTime, change_7d: s.change_7d }",
 	},
 	{
 		name: "defillama_get_options_overview",
 		qualified: "defillama.options.getOptionsOverview",
 		sandboxImpl: lazyMethod("optionsService", "getOptionsOverviewRaw"),
 		description:
-			"Fetch an options-volume overview across all options protocols, or scoped to one chain when `chain` is provided. Returns the full `protocols` array (sort/slice in your execute() script). Use the chain DISPLAY NAME from `defillama.resolveChain(input).name` (case-sensitive). This is also the canonical source for discovering valid options-protocol slugs — read the `slug` field off each entry.",
+			"Broad overview of options-protocol volume across all chains, or scoped to one chain. Returns a large `protocols` array — use for leaderboards or as the canonical source for discovering valid options-protocol slugs (`slug` field on each entry). For a single-protocol question, prefer the resolver → `getOptionsSummary({protocol: slug})` path. ALWAYS sort/filter/project inside the `execute()` sandbox before returning; never return the raw response.",
 		parameters: z.object({
 			chain: z
 				.string()
@@ -364,7 +366,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: OptionsOverviewSchema,
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); await defillama.options.getOptionsOverview({chain: name})",
+			"const {name} = await defillama.resolveChain(input); const overview = await defillama.options.getOptionsOverview({chain: name}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
 	},
 	// ── Stablecoins (stablecoins.llama.fi) ─────────────────────────────────
 	{
@@ -372,7 +374,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		qualified: "defillama.stablecoin.getStablecoins",
 		sandboxImpl: lazyMethod("stablecoinService", "getStablecoinsRaw"),
 		description:
-			"List all stablecoins with circulation data (and optionally current prices). Returns the full `peggedAssets` array (sort/slice/field-pick in your execute() script).",
+			"Broad list of all stablecoins with circulation data (optionally current prices). Returns a large `peggedAssets` array — use for leaderboards or as the canonical source for discovering stablecoin IDs (`id` field). For a single-stablecoin question, prefer `defillama.resolveStablecoin(symbol)` → `getStablecoinCharts({stablecoin: id})`. ALWAYS sort/filter/project inside the `execute()` sandbox before returning; never return the raw response.",
 		parameters: z.object({
 			includePrices: z
 				.boolean()
@@ -381,17 +383,18 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: StablecoinsSchema,
 		exampleCall:
-			"await defillama.stablecoin.getStablecoins({includePrices: true})",
+			"const res = await defillama.stablecoin.getStablecoins({includePrices: true}); return (res.peggedAssets ?? []).slice(0, 20).map(s => ({id: s.id, symbol: s.symbol, name: s.name, circulating: s.circulating, price: s.price}))",
 	},
 	{
 		name: "defillama_get_stablecoin_chains",
 		qualified: "defillama.stablecoin.getStablecoinChains",
 		sandboxImpl: lazyMethod("stablecoinService", "getStablecoinChainsRaw"),
 		description:
-			"List stablecoin market-cap totals broken down by chain. Returns the full array (slice/sort in your execute() script).",
+			"Stablecoin market-cap totals broken down by chain. Returns the full array — slice/sort/project inside the `execute()` sandbox; don't return the raw response.",
 		parameters: z.object({}),
 		responseSchema: StablecoinChainsSchema,
-		exampleCall: "await defillama.stablecoin.getStablecoinChains()",
+		exampleCall:
+			"const rows = await defillama.stablecoin.getStablecoinChains(); return rows.slice(0, 30).map(r => ({name: r.name, total: r.totalCirculatingUSD}))",
 	},
 	{
 		name: "defillama_get_stablecoin_charts",
@@ -415,17 +418,18 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: StablecoinChartsSchema,
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); const id = await defillama.resolveStablecoin(symbol); await defillama.stablecoin.getStablecoinCharts({chain: name, stablecoin: id})",
+			"const {name} = await defillama.resolveChain(input); const id = await defillama.resolveStablecoin(symbol); const series = await defillama.stablecoin.getStablecoinCharts({chain: name, stablecoin: id}); return series.slice(-90).map(p => ({date: p.date, totalCirculatingUSD: p.totalCirculatingUSD}))",
 	},
 	{
 		name: "defillama_get_stablecoin_prices",
 		qualified: "defillama.stablecoin.getStablecoinPrices",
 		sandboxImpl: lazyMethod("stablecoinService", "getStablecoinPricesRaw"),
 		description:
-			"Fetch the historical stablecoin price series (per-asset prices over time). Returns the full series (slice the tail in your execute() script).",
+			"Historical stablecoin price series across all tracked assets. Returns a large time series — slice the tail (or project per-asset) inside the `execute()` sandbox; don't return the raw response.",
 		parameters: z.object({}),
 		responseSchema: StablecoinPricesSchema,
-		exampleCall: "await defillama.stablecoin.getStablecoinPrices()",
+		exampleCall:
+			"const series = await defillama.stablecoin.getStablecoinPrices(); return series.slice(-90).map(p => ({date: p.date, prices: p.prices}))",
 	},
 	// ── Prices (coins.llama.fi) ────────────────────────────────────────────
 	{
@@ -448,7 +452,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: CurrentPricesSchema,
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); await defillama.price.getCurrentPrices({coins: `${slug}:${tokenAddress}`})",
+			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getCurrentPrices({coins: key}); return res.coins?.[key]?.price",
 	},
 	{
 		name: "defillama_get_prices_first_coins",
@@ -465,7 +469,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: FirstPricesSchema,
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); await defillama.price.getFirstPrices({coins: `${slug}:${tokenAddress}`})",
+			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getFirstPrices({coins: key}); return res.coins?.[key]",
 	},
 	{
 		name: "defillama_get_batch_historical",
@@ -497,7 +501,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: BatchHistoricalSchema,
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); await defillama.price.getBatchHistorical({coins: {[`${slug}:${tokenAddress}`]: [timestamp]}})",
+			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getBatchHistorical({coins: {[key]: [timestamp]}}); return res.coins?.[key]?.prices",
 	},
 	{
 		name: "defillama_get_historical_prices_by_contract",
@@ -522,7 +526,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: CurrentPricesSchema,
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); await defillama.price.getHistoricalPrices({coins: `${slug}:${tokenAddress}`, timestamp})",
+			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getHistoricalPrices({coins: key, timestamp}); return res.coins?.[key]",
 	},
 	{
 		name: "defillama_get_percentage_coins",
@@ -556,7 +560,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: PercentageSchema,
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); await defillama.price.getPercentageChange({coins: `${slug}:${tokenAddress}`, period: '7d'})",
+			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getPercentageChange({coins: key, period: '7d'}); return res.coins?.[key]",
 	},
 	{
 		name: "defillama_get_chart_coins",
@@ -602,7 +606,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: PriceChartSchema,
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); await defillama.price.getPriceChart({coins: `${slug}:${tokenAddress}`, span: 10, period: '1d'})",
+			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getPriceChart({coins: key, span: 30, period: '1d'}); return res.coins?.[key]?.prices ?? []",
 	},
 	// ── Yields (yields.llama.fi) ───────────────────────────────────────────
 	{
@@ -610,10 +614,11 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		qualified: "defillama.yield.getLatestPools",
 		sandboxImpl: lazyMethod("yieldService", "getLatestPoolsRaw"),
 		description:
-			"List current yield-farming pools with APY, TVL and reward metrics. Returns the full `data` array (sort/slice/field-pick in your execute() script). Each pool's `pool` UUID feeds getHistoricalPoolData.",
+			"Broad list of every current yield-farming pool with APY, TVL and reward metrics. The `data` array is large (thousands of pools across all chains/protocols) — use for cross-pool screens, leaderboards, or as the catalog for discovering the `pool` UUID before calling `getHistoricalPoolData`. ALWAYS filter (by chain/project/symbol/apy threshold) + sort + slice + project inside the `execute()` sandbox; never return the raw response.",
 		parameters: z.object({}),
 		responseSchema: PoolsSchema,
-		exampleCall: "await defillama.yield.getLatestPools()",
+		exampleCall:
+			"const pools = await defillama.yield.getLatestPools(); return (pools.data ?? []).sort((a,b) => (b.apy ?? 0) - (a.apy ?? 0)).slice(0, 20).map(p => ({pool: p.pool, project: p.project, symbol: p.symbol, chain: p.chain, apy: p.apy, tvlUsd: p.tvlUsd}))",
 	},
 	{
 		name: "defillama_get_historical_pool_data",
@@ -630,7 +635,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
 		}),
 		responseSchema: HistoricalPoolSchema,
 		exampleCall:
-			"const pools = await defillama.yield.getLatestPools(); const id = pools.data.find(p => /* match on project/symbol/chain */).pool; await defillama.yield.getHistoricalPoolData({pool: id})",
+			"const pools = await defillama.yield.getLatestPools(); const id = (pools.data ?? []).find(p => /* match on project/symbol/chain */)?.pool; if (!id) return { error: 'Pool not found' }; const series = await defillama.yield.getHistoricalPoolData({pool: id}); return (series.data ?? []).slice(-90).map(p => ({timestamp: p.timestamp, apy: p.apy, tvlUsd: p.tvlUsd}))",
 	},
 	// ── Blockchain (coins.llama.fi) ────────────────────────────────────────
 	{
