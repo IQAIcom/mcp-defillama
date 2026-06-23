@@ -120,10 +120,13 @@ Three patterns cover almost every case:
      .map(p => ({ slug: p.slug, name: p.name, tvl: p.tvl, chains: p.chains }));
    \`\`\`
 
-2. **Time-series** — slice the tail you care about, drop the extra fields:
+2. **Time-series** — slice the tail you care about, drop the extra fields. Note that \`/v2\`-style endpoints return \`date\` as Unix **seconds**, while JS \`new Date(n)\` expects **milliseconds** — multiply by 1000 before constructing the Date:
    \`\`\`js
    const series = await defillama.protocol.getHistoricalChainTvl({ chain: name });
-   return series.slice(-90).map(p => ({ date: p.date, tvl: p.tvl }));
+   return series.slice(-90).map(p => ({
+     date: new Date(p.date * 1000).toISOString(),
+     tvl: p.tvl,
+   }));
    \`\`\`
 
 3. **Single-entity summaries** — pluck only the fields the question needs:
