@@ -70,7 +70,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const slug = await defillama.resolveProtocol(name); const p = await defillama.protocol.getProtocol({protocol: slug}); const last = p.tvl?.at(-1); return { name: p.name, currentTvl: last?.totalLiquidityUSD, asOf: last?.date, chains: p.chains }",
+			"const slug = await defillama.resolveProtocol(name); if (!slug) return { error: 'Protocol not found' }; const p = await defillama.protocol.getProtocol({protocol: slug}); const last = p.tvl?.at(-1); return { name: p.name, currentTvl: last?.totalLiquidityUSD, asOf: last?.date, chains: p.chains }",
 	},
 	{
 		kind: "method",
@@ -91,7 +91,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); const series = await defillama.protocol.getHistoricalChainTvl({chain: name}); return series.slice(-90).map(p => ({date: new Date(p.date * 1000).toISOString() /* p.date is Unix seconds; multiply by 1000 for JS Date */, tvl: p.tvl}))",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const series = await defillama.protocol.getHistoricalChainTvl({chain: chain.name}); return series.slice(-90).map(p => ({date: new Date(p.date * 1000).toISOString() /* p.date is Unix seconds; multiply by 1000 for JS Date */, tvl: p.tvl}))",
 	},
 	{
 		kind: "method",
@@ -123,7 +123,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const slug = await defillama.resolveProtocol(name); const s = await defillama.dex.getDexSummary({protocol: slug}); return { name: s.name, total24h: s.total24h, total7d: s.total7d, total30d: s.total30d, totalAllTime: s.totalAllTime, change_1d: s.change_1d, change_7d: s.change_7d }",
+			"const slug = await defillama.resolveProtocol(name); if (!slug) return { error: 'Protocol not found' }; const s = await defillama.dex.getDexSummary({protocol: slug}); return { name: s.name, total24h: s.total24h, total7d: s.total7d, total30d: s.total30d, totalAllTime: s.totalAllTime, change_1d: s.change_1d, change_7d: s.change_7d }",
 	},
 	{
 		kind: "method",
@@ -154,7 +154,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); const overview = await defillama.dex.getDexsOverview({chain: name}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const overview = await defillama.dex.getDexsOverview({chain: chain.name}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
 	},
 	{
 		kind: "method",
@@ -192,7 +192,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const slug = await defillama.resolveProtocol(name); const s = await defillama.fees.getFeesSummary({protocol: slug, dataType: 'dailyRevenue'}); return { name: s.name, total24h: s.total24h, total7d: s.total7d, total30d: s.total30d, totalAllTime: s.totalAllTime, change_1d: s.change_1d, change_7d: s.change_7d }",
+			"const slug = await defillama.resolveProtocol(name); if (!slug) return { error: 'Protocol not found' }; const s = await defillama.fees.getFeesSummary({protocol: slug, dataType: 'dailyRevenue'}); return { name: s.name, total24h: s.total24h, total7d: s.total7d, total30d: s.total30d, totalAllTime: s.totalAllTime, change_1d: s.change_1d, change_7d: s.change_7d }",
 	},
 	{
 		kind: "method",
@@ -229,7 +229,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); const overview = await defillama.fees.getFeesOverview({chain: name, dataType: 'dailyFees'}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const overview = await defillama.fees.getFeesOverview({chain: chain.name, dataType: 'dailyFees'}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
 	},
 	{
 		kind: "method",
@@ -257,7 +257,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const slug = await defillama.resolveProtocol(name); const s = await defillama.options.getOptionsSummary({protocol: slug}); return { name: s.name, total24h: s.total24h, total7d: s.total7d, totalAllTime: s.totalAllTime, change_7d: s.change_7d }",
+			"const slug = await defillama.resolveProtocol(name); if (!slug) return { error: 'Protocol not found' }; const s = await defillama.options.getOptionsSummary({protocol: slug}); return { name: s.name, total24h: s.total24h, total7d: s.total7d, totalAllTime: s.totalAllTime, change_7d: s.change_7d }",
 	},
 	{
 		kind: "method",
@@ -294,7 +294,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); const overview = await defillama.options.getOptionsOverview({chain: name}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const overview = await defillama.options.getOptionsOverview({chain: chain.name}); return (overview.protocols ?? []).sort((a,b) => (b.total24h ?? 0) - (a.total24h ?? 0)).slice(0, 20).map(p => ({slug: p.slug, name: p.name, total24h: p.total24h, change_7d: p.change_7d}))",
 	},
 	{
 		kind: "method",
@@ -364,7 +364,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {name} = await defillama.resolveChain(input); const id = await defillama.resolveStablecoin(symbol); const series = await defillama.stablecoin.getStablecoinCharts({chain: name, stablecoin: id}); return series.slice(-90).map(p => ({date: new Date(p.date * 1000).toISOString() /* p.date is Unix seconds; multiply by 1000 for JS Date */, totalCirculatingUSD: p.totalCirculatingUSD}))",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const id = await defillama.resolveStablecoin(symbol); if (!id) return { error: 'Stablecoin not found' }; const series = await defillama.stablecoin.getStablecoinCharts({chain: chain.name, stablecoin: id}); return series.slice(-90).map(p => ({date: new Date(p.date * 1000).toISOString() /* p.date is Unix seconds; multiply by 1000 for JS Date */, totalCirculatingUSD: p.totalCirculatingUSD}))",
 	},
 	{
 		kind: "method",
@@ -413,7 +413,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getCurrentPrices({coins: key}); return res.coins?.[key]?.price",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const key = `${chain.slug}:${tokenAddress}`; const res = await defillama.price.getCurrentPrices({coins: key}); return res.coins?.[key]?.price",
 	},
 	{
 		kind: "method",
@@ -435,7 +435,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getFirstPrices({coins: key}); return res.coins?.[key]",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const key = `${chain.slug}:${tokenAddress}`; const res = await defillama.price.getFirstPrices({coins: key}); return res.coins?.[key]",
 	},
 	{
 		kind: "method",
@@ -497,7 +497,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getBatchHistorical({coins: {[key]: [timestamp]}}); return res.coins?.[key]?.prices",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const key = `${chain.slug}:${tokenAddress}`; const res = await defillama.price.getBatchHistorical({coins: {[key]: [timestamp]}}); return res.coins?.[key]?.prices",
 	},
 	{
 		kind: "method",
@@ -546,7 +546,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getHistoricalPrices({coins: key, timestamp}); return res.coins?.[key]",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const key = `${chain.slug}:${tokenAddress}`; const res = await defillama.price.getHistoricalPrices({coins: key, timestamp}); return res.coins?.[key]",
 	},
 	{
 		kind: "method",
@@ -593,7 +593,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getPercentageChange({coins: key, period: '7d'}); return res.coins?.[key]",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const key = `${chain.slug}:${tokenAddress}`; const res = await defillama.price.getPercentageChange({coins: key, period: '7d'}); return res.coins?.[key]",
 	},
 	{
 		kind: "method",
@@ -669,7 +669,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); const key = `${slug}:${tokenAddress}`; const res = await defillama.price.getPriceChart({coins: key, span: 30, period: '1d'}); return res.coins?.[key]?.prices ?? []",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; const key = `${chain.slug}:${tokenAddress}`; const res = await defillama.price.getPriceChart({coins: key, span: 30, period: '1d'}); return res.coins?.[key]?.prices ?? []",
 	},
 	{
 		kind: "method",
@@ -743,7 +743,7 @@ export const ENTRIES: IndexEntry[] = [
 			additionalProperties: false,
 		},
 		exampleCall:
-			"const {slug} = await defillama.resolveChain(input); await defillama.blockchain.getBlockAtTimestamp({chain: slug, timestamp: Math.floor(Date.now()/1000)})",
+			"const chain = await defillama.resolveChain(input); if (!chain) return { error: 'Chain not found' }; return await defillama.blockchain.getBlockAtTimestamp({chain: chain.slug, timestamp: Math.floor(Date.now()/1000)})",
 	},
 	{
 		kind: "prose",
